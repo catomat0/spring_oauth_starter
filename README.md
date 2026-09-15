@@ -49,7 +49,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.catomat0:oauth-helper:2.0.0'
+    implementation 'com.github.catomat0:oauth-helper:2.1.0'
 }
 ```
 
@@ -241,32 +241,24 @@ openssl rand -base64 48    # signup-token.secret-key 용 (별도로 한 번 더)
 
 ## 4. 콜백 컨트롤러 예시 (풀 플로우)
 
+**v2.1.0 부터 3개 도메인 파사드 (`OahOAuth` / `OahJwt` / `OahSignup`) 제공** — 개별 서비스 9개 주입 대신 파사드 3개만 주입:
+
 ```java
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    // OAuth
-    private final OahStateService oauthStateService;
-    private final OahAuthorizeUrlBuilder oauthAuthorizeUrlBuilder;
-    private final OahLoginService oauthLoginService;
-    // JWT
-    private final OahJwtProvider jwtProvider;
-    private final OahRefreshTokenService refreshTokenService;
-    private final OahRefreshTokenCookieWriter refreshCookieWriter;
-    // Signup token
-    private final OahSignupTokenProvider signupTokenProvider;
-    private final OahSignupTokenService signupTokenService;
-    private final OahSignupTokenCookieWriter signupCookieWriter;
-
+    private final OahOAuth oauth;         // state + authorize + login
+    private final OahJwt jwt;             // provider + refresh + cookie
+    private final OahSignup signup;       // provider + service + cookie
     private final UserRepository userRepository;
 
     /** 1) 프론트가 이 엔드포인트로 redirect → 라이브러리가 state + PKCE 생성 후 Kakao/Google authorize URL 로 redirect */
     @GetMapping("/oauth2/{provider}/authorize")
     public void authorize(@PathVariable String provider, HttpServletResponse response) throws IOException {
-        OahAuthorizeParams params = oauthStateService.issue(provider);
-        String url = oauthAuthorizeUrlBuilder.build(provider, params);
+        OahAuthorizeParams params = oauth.state().issue(provider);
+        String url = oauth.authorize().build(provider, params);
         response.sendRedirect(url);
     }
 
@@ -276,40 +268,43 @@ public class AuthController {
                                      @RequestParam String code,
                                      @RequestParam String state,
                                      HttpServletResponse response) {
-        String codeVerifier = oauthStateService.validateAndConsume(state, provider);
+        String codeVerifier = oauth.state().validateAndConsume(state, provider);
         if (codeVerifier == null) {
             throw new OahException(OahErrorCode.STATE_INVALID, "Invalid or reused state");
         }
-        OahUserInfo info = oauthLoginService.fetchUserInfo(provider, code, codeVerifier);
+        OahUserInfo info = oauth.login().fetchUserInfo(provider, code, codeVerifier);
 
         return userRepository
                 .findByProviderAndProviderId(info.provider(), info.providerId())
-                .map(user -> issueJwt(user, response))
+                .<ResponseEntity<?>>map(user -> issueJwt(user, response))
                 .orElseGet(() -> issueSignupToken(info, response));
     }
 
     private ResponseEntity<?> issueJwt(User user, HttpServletResponse response) {
         String uid = user.getId().toString();
-        String access = jwtProvider.generateAccessToken(uid, user.getRole().name());
-        String refresh = jwtProvider.generateRefreshToken(uid);
-        refreshTokenService.save(uid, refresh);
+        String access = jwt.provider().generateAccessToken(uid, user.getRole().name());
+        String refresh = jwt.provider().generateRefreshToken(uid);
+        jwt.refresh().save(uid, refresh);
 
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
-        refreshCookieWriter.write(response, refresh);                     // HttpOnly 쿠키로
+        jwt.cookie().write(response, refresh);                     // HttpOnly 쿠키로
         return ResponseEntity.ok(Map.of("registered", true));
     }
 
     private ResponseEntity<?> issueSignupToken(OahUserInfo info, HttpServletResponse response) {
-        String token = signupTokenProvider.builder(info.provider(), info.providerId(), info.email())
+        String token = signup.provider().builder(info.provider(), info.providerId(), info.email())
                 .claim("nickname", info.nickname())
                 .claim("profileImage", info.profileImage())
                 .build();
-        signupTokenService.save(info.provider(), info.providerId(), token);
-        signupCookieWriter.write(response, token);
+        signup.service().save(info.provider(), info.providerId(), token);
+        signup.cookie().write(response, token);
         return ResponseEntity.ok(Map.of("registered", false));
     }
 }
 ```
+
+> **개별 서비스 직접 주입 방식도 그대로 지원** — 파사드가 마음에 안 들면 `OahStateService`, `OahJwtProvider` 등 개별 빈을 그대로 주입해도 됨.
+> **파사드 자동 등록 조건**: 파사드 내부 3개 빈이 모두 존재해야 함. 예를 들어 Redis 미설정 → `OahJwt` 미등록 → `OahJwtProvider` 만 개별 주입.
 
 ### 4-1. Refresh token rotation (쿠키 기반)
 
@@ -421,6 +416,10 @@ public class SecurityConfig {
 | `OahSignupTokenService` | `validateAndConsume` | 회원가입 완료 시 원자적 소비 |
 | `OahSignupTokenCookieWriter` | `write/read/clear` | HttpOnly 쿠키 관리 |
 | `OahSignupTokenSecurity` | `corsForCookieAuth(...)` | CORS 헬퍼 |
+| **파사드 (v2.1.0+)** | | |
+| `OahOAuth` (record) | `.state() / .authorize() / .login()` | 🌟 OAuth 3개 서비스 묶음 |
+| `OahJwt` (record) | `.provider() / .refresh() / .cookie()` | 🌟 JWT 3개 서비스 묶음 |
+| `OahSignup` (record) | `.provider() / .service() / .cookie()` | 🌟 Signup 3개 서비스 묶음 |
 
 ---
 

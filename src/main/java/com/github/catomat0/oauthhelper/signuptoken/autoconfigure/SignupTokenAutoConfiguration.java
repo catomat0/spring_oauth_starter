@@ -1,5 +1,6 @@
 package com.github.catomat0.oauthhelper.signuptoken.autoconfigure;
 
+import com.github.catomat0.oauthhelper.signuptoken.OahSignup;
 import com.github.catomat0.oauthhelper.signuptoken.OahSignupTokenCookieWriter;
 import com.github.catomat0.oauthhelper.signuptoken.OahSignupTokenProperties;
 import com.github.catomat0.oauthhelper.signuptoken.OahSignupTokenProvider;
@@ -46,6 +47,15 @@ public class SignupTokenAutoConfiguration {
                 OahSignupTokenProperties properties
         ) {
             return new OahSignupTokenService(redisTemplate, properties);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnBean({OahSignupTokenProvider.class, OahSignupTokenService.class, OahSignupTokenCookieWriter.class})
+        OahSignup oahSignup(OahSignupTokenProvider provider,
+                            OahSignupTokenService service,
+                            OahSignupTokenCookieWriter cookie) {
+            return new OahSignup(provider, service, cookie);
         }
     }
 }

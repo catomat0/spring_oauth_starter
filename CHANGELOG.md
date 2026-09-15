@@ -3,7 +3,16 @@
 이 프로젝트의 모든 주요 변경사항은 이 파일에 기록됩니다.
 버전 형식은 [Semantic Versioning](https://semver.org/) 기준.
 
-## [2.0.0] - Unreleased
+## [2.1.0] - Unreleased
+
+### Added
+- **3개 도메인 파사드 record 추가** — 컨트롤러에서 개별 서비스 9개 주입 대신 파사드 3개 주입 가능. 기존 개별 빈도 그대로 등록됨 (non-breaking additive).
+  - `OahOAuth(state, authorize, login)` — OAuth 3개
+  - `OahJwt(provider, refresh, cookie)` — JWT 3개
+  - `OahSignup(provider, service, cookie)` — Signup 3개
+- 파사드는 내부 3개 빈이 모두 존재할 때만 자동 등록 (`@ConditionalOnBean`). 예: Redis 미설정 → `OahJwt` 등록 안 됨 → `OahJwtProvider` 개별 주입.
+
+## [2.0.0] - 2026-09-15
 
 ### Changed (BREAKING)
 - **프로젝트 리브랜딩**: `spring_oauth_starter` → **`oauth-helper`** (약칭 OAH)

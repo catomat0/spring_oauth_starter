@@ -1,5 +1,6 @@
 package com.github.catomat0.oauthhelper.jwt.autoconfigure;
 
+import com.github.catomat0.oauthhelper.jwt.OahJwt;
 import com.github.catomat0.oauthhelper.jwt.OahJwtAuthenticationFilter;
 import com.github.catomat0.oauthhelper.jwt.OahJwtProperties;
 import com.github.catomat0.oauthhelper.jwt.OahJwtProvider;
@@ -65,6 +66,15 @@ public class JwtAutoConfiguration {
                 OahJwtProperties properties
         ) {
             return new OahRefreshTokenService(redisTemplate, properties);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnBean({OahJwtProvider.class, OahRefreshTokenService.class, OahRefreshTokenCookieWriter.class})
+        OahJwt oahJwt(OahJwtProvider provider,
+                      OahRefreshTokenService refresh,
+                      OahRefreshTokenCookieWriter cookie) {
+            return new OahJwt(provider, refresh, cookie);
         }
     }
 

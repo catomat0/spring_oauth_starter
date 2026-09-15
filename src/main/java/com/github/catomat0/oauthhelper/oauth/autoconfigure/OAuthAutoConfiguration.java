@@ -2,6 +2,7 @@ package com.github.catomat0.oauthhelper.oauth.autoconfigure;
 
 import com.github.catomat0.oauthhelper.oauth.OahAuthorizeUrlBuilder;
 import com.github.catomat0.oauthhelper.oauth.OahLoginService;
+import com.github.catomat0.oauthhelper.oauth.OahOAuth;
 import com.github.catomat0.oauthhelper.oauth.OahProperties;
 import com.github.catomat0.oauthhelper.oauth.OahStateService;
 import com.github.catomat0.oauthhelper.oauth.OahTokenClient;
@@ -71,6 +72,15 @@ public class OAuthAutoConfiguration {
                 OahProperties properties
         ) {
             return new OahStateService(redisTemplate, properties);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnBean({OahStateService.class, OahAuthorizeUrlBuilder.class, OahLoginService.class})
+        OahOAuth oahOAuth(OahStateService state,
+                          OahAuthorizeUrlBuilder authorize,
+                          OahLoginService login) {
+            return new OahOAuth(state, authorize, login);
         }
     }
 }

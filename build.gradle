@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.github.catomat0'
-version = (System.getenv('RELEASE_VERSION') ?: findProperty('releaseVersion') ?: '2.0.0')
+version = (System.getenv('RELEASE_VERSION') ?: findProperty('releaseVersion') ?: '2.1.0')
         .toString().replaceFirst(/^v/, '')
 
 base {
