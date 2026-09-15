@@ -21,24 +21,109 @@ Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (a
 
 ---
 
-## 1. 설치 (GitHub Packages)
+## 1. 설치
 
-### 1-1. Consumer 세팅
+**요약: 그냥 아래 두 줄 넣으면 끝.** 인증 세팅 필요 없고, 로컬/GitHub Actions/Jenkins/GitLab CI 어디서든 그대로 동작합니다.
 
-**Step 1. GitHub PAT 발급**
-[Settings → Developer settings → Personal access tokens (classic)](https://github.com/settings/tokens/new)
-- Scope: `read:packages` (필수), `repo` (private repo인 경우)
-
-**Step 2. `~/.gradle/gradle.properties`** — 커밋 금지 (홈 디렉토리)
-```properties
-gpr.user=<본인_github_username>          # 예: my-github-id (라이브러리 소유자 이름 아님!)
-gpr.token=ghp_xxxxxxxxxxxxxxxxxxxxx      # 본인이 발급한 PAT
-```
-
-**Step 3. 프로젝트 `build.gradle`**
 ```gradle
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.catomat0:Oah:2.1.0'
+}
+```
+
+**필수 런타임 의존성** (consumer 프로젝트에 이미 있어야 함):
+- `spring-boot-starter-web`
+- `spring-boot-starter-data-redis` (refresh/signup/state 저장용)
+- Redis 서버 **6.2 이상** (`GETDEL` 사용)
+- `spring-boot-starter-security` (선택 — `OahJwtAuthenticationFilter` 자동 등록 원할 때)
+
+### 1-1. 왜 JitPack?
+
+| 상황 | JitPack | GitHub Packages | Maven Central |
+|---|---|---|---|
+| 개인 레포에서 사용 | ✅ 세팅 0 | ⚠️ PAT 필요 | ✅ 세팅 0 |
+| 다른 사용자 레포에서 사용 | ✅ 세팅 0 | ⚠️ PAT 필요 | ✅ 세팅 0 |
+| 외부 조직 레포에서 사용 | ✅ 세팅 0 | ❌ 별도 PAT 발급 필요 | ✅ 세팅 0 |
+| GitHub Actions | ✅ 그대로 됨 | ⚠️ secrets 세팅 필요 | ✅ 그대로 됨 |
+| Jenkins/GitLab/CircleCI | ✅ 그대로 됨 | ⚠️ credential 저장 필요 | ✅ 그대로 됨 |
+
+**JitPack 은 public 저장소에 대해 무인증 접근**을 제공합니다. Consumer 프로젝트가 개인이든 조직이든 CI 든 로컬이든, 위 두 줄만 있으면 그냥 동작합니다.
+
+### 1-2. Maven 사용자
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.catomat0</groupId>
+    <artifactId>Oah</artifactId>
+    <version>2.1.0</version>
+</dependency>
+```
+
+### 1-3. 버전 지정 방법
+
+| 표기 | 의미 |
+|---|---|
+| `2.1.0` | 특정 릴리즈 태그 (권장) |
+| `main-SNAPSHOT` | main 브랜치 최신 커밋 (실험용, 캐시 30분) |
+| `<커밋해시>` | 특정 커밋 (재현 가능) |
+
+**첫 요청 시 JitPack 서버가 소스로부터 빌드**하기 때문에 30초~2분 지연이 있을 수 있고, 이후 요청은 캐시에서 즉시 응답합니다. CI 에서 처음 pull 할 때만 잠깐 느립니다.
+
+### 1-4. CI/CD 스니펫
+
+**GitHub Actions** — 아무 추가 세팅 불필요
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-java@v4
+  with:
+    java-version: '17'
+    distribution: 'temurin'
+- run: ./gradlew build
+```
+
+**Jenkins / GitLab CI / CircleCI** — Consumer 의 표준 Java 빌드 스텝 그대로. Oah 때문에 추가 credential 세팅 필요 **없음**.
+
+**Docker 빌드** — 그냥 됨.
+```dockerfile
+FROM gradle:8-jdk17 AS builder
+WORKDIR /app
+COPY . .
+RUN gradle build --no-daemon
+```
+
+---
+
+## 1-B. (선택) GitHub Packages 로 사용하기
+
+JitPack 은 첫 요청이 느릴 수 있어서 **CI 캐시 히트율을 최우선**으로 하고 싶거나, **완전 private 배포**가 필요한 경우 GitHub Packages 를 쓸 수 있습니다. 다만 소비자마다 PAT 세팅이 필요합니다.
+
+<details>
+<summary>펼쳐서 보기</summary>
+
+**Step 1. GitHub PAT 발급**
+[Settings → Developer settings → Personal access tokens (classic)](https://github.com/settings/tokens/new) — Scope: `read:packages` 만 필요.
+
+**Step 2. `~/.gradle/gradle.properties`** — 커밋 금지
+```properties
+gpr.user=<본인_github_username>
+gpr.token=ghp_xxxxxxxxxxxxxxxxxxxxx
+```
+
+**Step 3. `build.gradle`**
+```gradle
+repositories {
     maven {
         url = uri('https://maven.pkg.github.com/catomat0/Oah')
         credentials {
@@ -53,46 +138,22 @@ dependencies {
 }
 ```
 
-**필수 런타임 의존성** (consumer 프로젝트에 이미 있어야 함):
-- `spring-boot-starter-web`
-- `spring-boot-starter-data-redis` (refresh/signup/state 저장용)
-- Redis 서버 **6.2 이상** (`GETDEL` 사용)
-- `spring-boot-starter-security` (선택 — `OahJwtAuthenticationFilter` 자동 등록 원할 때)
+**Step 4. CI 별 세팅**
 
-### 1-2. 인증/개인정보 관련 안내
+- **GitHub Actions (같은 catomat0 계정 레포)** — workflow 에 `permissions: { packages: read }` 만 추가하면 자동 `GITHUB_TOKEN` 사용 가능
+- **GitHub Actions (다른 계정/조직)** — 본인 PAT 을 secret 으로 등록 후 주입
+  ```yaml
+  - run: ./gradlew build
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN }}
+  ```
+- **Jenkins/GitLab** — CI credential 저장소에 `gpr.user`/`gpr.token` 등록 후 build args 로 전달
 
-라이브러리 사용 전에 자주 묻는 것:
+**Q. 라이브러리를 임포트하면 소유자에게 내 정보/토큰이 흘러가나?**
+아니오. PAT 은 GitHub Packages 서버 인증에만 쓰이고, 라이브러리 코드는 순수 JAR (OAuth 콜백에서 Kakao/Google API 호출 외 외부 통신 없음).
 
-**Q1. `catomat0` 이 URL 에 있는데 이걸 내가 써야 하나?**
-아니오. URL 의 `catomat0` 은 **패키지가 호스팅된 GitHub 계정 경로**입니다 (도서관 주소 같은 개념 — 못 바꿈).
-반면 `gpr.user` / `gpr.token` 은 **다운로드하는 본인의** GitHub 계정과 PAT 입니다. **서로 다른 값이 정상.**
-
-| 항목 | 값 | 의미 |
-|---|---|---|
-| `url = ...catomat0/Oah` | 고정 | 패키지가 있는 위치 (내 계정) |
-| `gpr.user` | 본인 GitHub username | 인증 주체 (다운받는 사람) |
-| `gpr.token` | 본인이 발급한 PAT | 인증 자격 (다운받는 사람) |
-
-**Q2. 이 라이브러리를 임포트하면 라이브러리 소유자에게 내 정보/토큰이 흘러가나?**
-아니오.
-- PAT 는 오직 **GitHub Packages 서버**로 인증 요청 시에만 사용됩니다 (HTTPS). 라이브러리 코드에는 흘러가지 않음.
-- 라이브러리는 순수 JAR — 네트워크로 어디에 정보 보내는 코드 **없음**. OAuth 콜백에서 Kakao/Google API 를 호출하는 것 외에 외부 통신 0.
-- Gradle 이 authenticated request 로 JAR 만 받아옴. 그게 끝.
-
-**Q3. 라이브러리 저장소에 소유자의 토큰이나 개인정보가 들어있진 않나?**
-없습니다. 배포 전에 audit 결과:
-- 하드코딩된 PAT/API key/시크릿 → **0건**
-- `build.gradle` / workflow — 모두 env 변수 (`GITHUB_TOKEN`, `GITHUB_ACTOR`) 또는 GitHub Actions 런타임 시크릿만 참조. 하드코딩 없음
-- README 의 `ghp_xxxxxxxxxxxxxxxxxxxxx` → placeholder (실제 토큰 아님)
-- 노출되는 정보: `catomat0` 이라는 GitHub username (이미 public repo 소유자로 공개된 정보)
-- `.gitignore` 로 `gradle.properties`, `.gradle/`, `.idea/`, `build/` 등 실수 커밋 방지
-
-**Q4. PAT 를 만들 때 최소한 어떤 권한만 주면 되나?**
-`read:packages` **한 개면 충분** (라이브러리 다운로드용).
-Public repo 이므로 `repo` 권한은 필요 없음. 최소 권한 원칙 준수를 위해 다른 스코프는 다 끄고 발급하세요.
-
-**Q5. PAT 유출 시 어떻게?**
-[Settings → Developer settings → PAT](https://github.com/settings/tokens) 에서 즉시 **Revoke** → 새로 발급. Gradle 캐시에는 credentials 안 남지만, 로컬 `gradle.properties` 재작성.
+</details>
 
 ---
 
