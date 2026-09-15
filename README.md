@@ -460,7 +460,9 @@ try {
     switch (e.code()) {
         case PROVIDER_UNKNOWN            -> // 잘못된 provider 이름 (kakao/google 이외)
         case PROVIDER_NOT_CONFIGURED     -> // application.yml 미설정
+        case PROVIDER_INCOMPLETE         -> // startup — client-id 는 있는데 다른 필드 누락
         case INSECURE_URI                -> // token-uri/user-info-uri 가 http://
+        case STATE_TTL_INVALID           -> // startup — state-ttl-seconds <= 0
         case TOKEN_EXCHANGE_FAILED       -> // Kakao/Google 서버 통신 실패
         case TOKEN_EXCHANGE_EMPTY        -> // 응답이 비어있음
         case USERINFO_FETCH_FAILED       -> // userinfo 호출 실패
@@ -472,7 +474,7 @@ try {
 }
 ```
 
-**JwtErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `TOKEN_TYPE_MISMATCH`
+**JwtErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `TOKEN_TYPE_MISMATCH`, `EXPIRATION_INVALID`, `REFRESH_COOKIE_INSECURE_SAMESITE`
 **SignupTokenErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `COOKIE_INSECURE_SAMESITE`, `EXPIRATION_INVALID`, `TOKEN_TYPE_MISMATCH`, `REDIS_PREFIX_COLLISION`
 
 ### 세팅/연결 실패 케이스
@@ -481,8 +483,11 @@ try {
 |---|---|
 | startup `JwtException(SECRET_KEY_MISSING)` | `jwt.secret-key` 미설정. 환경변수 확인 |
 | startup `JwtException(SECRET_KEY_TOO_SHORT)` | secret 32byte 미만. `openssl rand -base64 48` |
-| startup `IllegalStateException: oauth.X.Y must be configured...` | provider client-id 는 있는데 다른 필드 누락. 위 `application.yml` 예시 참고 |
-| startup `IllegalStateException: oauth.X.token-uri must use https://` | http:// URL 설정 시 client_secret 평문 노출 위험 → https:// 강제 |
+| startup `OAuthException(PROVIDER_INCOMPLETE)` | provider client-id 는 있는데 다른 필드 누락. 위 `application.yml` 예시 참고 |
+| startup `OAuthException(INSECURE_URI)` | http:// URL 설정 시 client_secret 평문 노출 위험 → https:// 강제 |
+| startup `OAuthException(STATE_TTL_INVALID)` | `oauth.state-ttl-seconds` 값이 0 이하 |
+| startup `JwtException(EXPIRATION_INVALID)` | access/refresh expiration 이 0 이하 or refresh < access |
+| startup `JwtException(REFRESH_COOKIE_INSECURE_SAMESITE)` | `jwt.refresh-cookie.same-site=None` 인데 `secure=false`. 브라우저가 쿠키 drop |
 | startup WARN `RefreshTokenService will NOT be registered — RedisTemplate missing` | `spring-boot-starter-data-redis` 미추가. Redis 안 쓰고 access-only 라면 무시 가능 |
 | `OAuthException(PROVIDER_UNKNOWN)` | provider path variable 이 kakao/google 이외. URL 오탈자 확인 |
 | `OAuthException(PROVIDER_NOT_CONFIGURED)` | 호출한 provider config 미설정. `oauth.<provider>.client-id` 확인 |

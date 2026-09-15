@@ -5,8 +5,12 @@ public enum OAuthErrorCode {
     PROVIDER_UNKNOWN,
     /** provider config 미설정 (client-id 없음). */
     PROVIDER_NOT_CONFIGURED,
+    /** provider client-id 는 있으나 다른 필수 필드가 누락됨 (startup). */
+    PROVIDER_INCOMPLETE,
     /** provider config 의 token-uri / user-info-uri 가 http:// 로 시작. */
     INSECURE_URI,
+    /** oauth.state-ttl-seconds 가 0 이하 (startup). */
+    STATE_TTL_INVALID,
     /** code -> access_token 교환 HTTP 호출 실패 (네트워크/4xx/5xx). */
     TOKEN_EXCHANGE_FAILED,
     /** code -> access_token 응답이 비어있음 (200 이지만 access_token null). */

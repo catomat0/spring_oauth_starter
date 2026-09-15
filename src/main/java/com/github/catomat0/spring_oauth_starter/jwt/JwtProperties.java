@@ -16,20 +16,20 @@ public class JwtProperties {
     void validate() {
         if (secretKey == null || secretKey.isBlank()) return;
         if (accessTokenExpiration <= 0) {
-            throw new IllegalStateException(
+            throw new JwtException(JwtErrorCode.EXPIRATION_INVALID,
                     "jwt.access-token-expiration must be positive (millis); got " + accessTokenExpiration);
         }
         if (refreshTokenExpiration <= 0) {
-            throw new IllegalStateException(
+            throw new JwtException(JwtErrorCode.EXPIRATION_INVALID,
                     "jwt.refresh-token-expiration must be positive (millis); got " + refreshTokenExpiration);
         }
         if (refreshTokenExpiration < accessTokenExpiration) {
-            throw new IllegalStateException(
+            throw new JwtException(JwtErrorCode.EXPIRATION_INVALID,
                     "jwt.refresh-token-expiration (" + refreshTokenExpiration + ") must be >= "
                             + "jwt.access-token-expiration (" + accessTokenExpiration + ")");
         }
         if ("None".equalsIgnoreCase(refreshCookie.getSameSite()) && !refreshCookie.isSecure()) {
-            throw new IllegalStateException(
+            throw new JwtException(JwtErrorCode.REFRESH_COOKIE_INSECURE_SAMESITE,
                     "jwt.refresh-cookie.same-site=None requires secure=true "
                             + "(browsers drop the cookie otherwise). "
                             + "For HTTP dev environments, use same-site=Lax and secure=false.");

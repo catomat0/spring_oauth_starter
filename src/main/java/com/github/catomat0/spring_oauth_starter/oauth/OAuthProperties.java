@@ -19,7 +19,7 @@ public class OAuthProperties {
         kakao.validate("kakao");
         google.validate("google");
         if (stateTtlSeconds <= 0) {
-            throw new IllegalStateException(
+            throw new OAuthException(OAuthErrorCode.STATE_TTL_INVALID,
                     "oauth.state-ttl-seconds must be positive; got " + stateTtlSeconds);
         }
     }
@@ -106,7 +106,7 @@ public class OAuthProperties {
 
         private static void requireField(String provider, String field, String value) {
             if (value == null || value.isBlank()) {
-                throw new IllegalStateException(
+                throw new OAuthException(OAuthErrorCode.PROVIDER_INCOMPLETE,
                         "oauth." + provider + "." + field + " must be configured when "
                                 + "oauth." + provider + ".client-id is set");
             }
@@ -114,7 +114,7 @@ public class OAuthProperties {
 
         private static void requireHttps(String provider, String field, String uri) {
             if (!uri.startsWith("https://")) {
-                throw new IllegalStateException(
+                throw new OAuthException(OAuthErrorCode.INSECURE_URI,
                         "oauth." + provider + "." + field + " must use https:// "
                                 + "(client_secret leak risk over plaintext http). got: " + uri);
             }
