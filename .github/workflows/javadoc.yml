@@ -30,8 +30,22 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RAW="${GITHUB_REF_NAME}"
+          else
+            RAW="${GITHUB_SHA}"
+          fi
+          VERSION="${RAW#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Generating JavaDoc for version: ${VERSION}"
+
       - name: Generate JavaDoc
         run: ./gradlew javadoc --no-daemon
+        env:
+          RELEASE_VERSION: ${{ steps.v.outputs.version }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
