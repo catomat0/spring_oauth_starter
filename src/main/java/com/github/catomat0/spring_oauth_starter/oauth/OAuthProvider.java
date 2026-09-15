@@ -11,12 +11,12 @@ public enum OAuthProvider {
 
     public static OAuthProvider from(String value) {
         if (value == null) {
-            throw new IllegalArgumentException("provider must not be null");
+            throw new OAuthException(OAuthErrorCode.PROVIDER_UNKNOWN, "provider must not be null");
         }
         try {
             return OAuthProvider.valueOf(value.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
+            throw new OAuthException(OAuthErrorCode.PROVIDER_UNKNOWN,
                     "Unknown OAuth provider: '" + value + "' (supported: kakao, google)");
         }
     }

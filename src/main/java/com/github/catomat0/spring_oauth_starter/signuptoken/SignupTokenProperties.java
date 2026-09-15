@@ -14,13 +14,13 @@ public class SignupTokenProperties {
     @PostConstruct
     void validate() {
         if ("None".equalsIgnoreCase(cookie.getSameSite()) && !cookie.isSecure()) {
-            throw new IllegalStateException(
+            throw new SignupTokenException(SignupTokenErrorCode.COOKIE_INSECURE_SAMESITE,
                     "signup-token.cookie.same-site=None requires cookie.secure=true "
                             + "(browsers drop the cookie otherwise). "
                             + "For HTTP dev environments, use same-site=Lax and secure=false.");
         }
         if (expiration <= 0) {
-            throw new IllegalStateException(
+            throw new SignupTokenException(SignupTokenErrorCode.EXPIRATION_INVALID,
                     "signup-token.expiration must be positive (millis); got " + expiration);
         }
     }

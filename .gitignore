@@ -2,6 +2,9 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+gradle.properties
+!gradle/wrapper/gradle.properties
+
 .idea/
 *.iml
 *.iws

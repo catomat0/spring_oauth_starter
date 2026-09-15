@@ -37,11 +37,11 @@ public class JwtProvider {
 
     private static SecretKey buildSigningKey(String secretKey) {
         if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalStateException("jwt.secret-key must be configured");
+            throw new JwtException(JwtErrorCode.SECRET_KEY_MISSING, "jwt.secret-key must be configured");
         }
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < MIN_SECRET_BYTES) {
-            throw new IllegalStateException(
+            throw new JwtException(JwtErrorCode.SECRET_KEY_TOO_SHORT,
                     "jwt.secret-key must be at least " + MIN_SECRET_BYTES
                             + " bytes (256 bits) for HS256; got " + keyBytes.length + " bytes. "
                             + "Generate one with: openssl rand -base64 48");
@@ -131,7 +131,7 @@ public class JwtProvider {
 
         String type = claims.get(CLAIM_TYPE, String.class);
         if (!expectedType.equals(type)) {
-            throw new IllegalArgumentException(
+            throw new JwtException(JwtErrorCode.TOKEN_TYPE_MISMATCH,
                     "Token type mismatch (expected=" + expectedType + ", got=" + type + ")");
         }
 

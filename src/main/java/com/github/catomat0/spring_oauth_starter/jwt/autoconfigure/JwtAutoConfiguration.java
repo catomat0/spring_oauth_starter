@@ -1,9 +1,13 @@
 package com.github.catomat0.spring_oauth_starter.jwt.autoconfigure;
 
+import com.github.catomat0.spring_oauth_starter.jwt.JwtAuthenticationFilter;
 import com.github.catomat0.spring_oauth_starter.jwt.JwtProperties;
 import com.github.catomat0.spring_oauth_starter.jwt.JwtProvider;
+import com.github.catomat0.spring_oauth_starter.jwt.RefreshTokenCookieWriter;
 import com.github.catomat0.spring_oauth_starter.jwt.RefreshTokenService;
 import io.jsonwebtoken.Jwts;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -29,6 +33,24 @@ public class JwtAutoConfiguration {
     @ConditionalOnMissingBean
     public JwtProvider jwtProvider(JwtProperties properties) {
         return new JwtProvider(properties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(HttpServletResponse.class)
+    public RefreshTokenCookieWriter refreshTokenCookieWriter(JwtProperties properties) {
+        return new RefreshTokenCookieWriter(properties);
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(SecurityContextHolder.class)
+    static class SecurityConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        JwtAuthenticationFilter jwtAuthenticationFilter(JwtProvider jwtProvider) {
+            return new JwtAuthenticationFilter(jwtProvider);
+        }
     }
 
     @Configuration(proxyBeanMethods = false)

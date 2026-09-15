@@ -35,16 +35,19 @@ public class OAuthUserInfoClient {
                     .retrieve()
                     .body(KakaoUserInfoResponse.class);
         } catch (RestClientException e) {
-            throw new OAuthException("Failed to fetch userinfo from kakao", e);
+            throw new OAuthException(OAuthErrorCode.USERINFO_FETCH_FAILED,
+                    "Failed to fetch userinfo from kakao (uri=" + p.getUserInfoUri() + "): " + e.getMessage(), e);
         }
         if (res == null || res.id() == null) {
-            throw new OAuthException("Empty userinfo response from kakao");
+            throw new OAuthException(OAuthErrorCode.USERINFO_EMPTY, "Empty userinfo response from kakao");
         }
 
         String providerId = String.valueOf(res.id());
         String email = res.kakaoAccount() != null ? res.kakaoAccount().email() : null;
         if (email == null || email.isBlank()) {
-            email = "kakao_" + providerId + "@kakao.user";
+            throw new OAuthException(OAuthErrorCode.EMAIL_MISSING,
+                    "Kakao userinfo does not contain email. "
+                            + "Set '카카오계정(이메일)' as REQUIRED consent in Kakao Developers Console.");
         }
 
         String nickname = null;
@@ -60,7 +63,7 @@ public class OAuthUserInfoClient {
             profileImage = res.properties().profileImage();
         }
 
-        return new OAuthUserInfo("kakao", providerId, email, nickname, profileImage);
+        return new OAuthUserInfo(OAuthProvider.KAKAO.lower(), providerId, email, nickname, profileImage);
     }
 
     private OAuthUserInfo fetchGoogle(String accessToken) {
@@ -75,18 +78,24 @@ public class OAuthUserInfoClient {
                     .retrieve()
                     .body(GoogleUserInfoResponse.class);
         } catch (RestClientException e) {
-            throw new OAuthException("Failed to fetch userinfo from google", e);
+            throw new OAuthException(OAuthErrorCode.USERINFO_FETCH_FAILED,
+                    "Failed to fetch userinfo from google (uri=" + p.getUserInfoUri() + "): " + e.getMessage(), e);
         }
         if (res == null || res.sub() == null) {
-            throw new OAuthException("Empty userinfo response from google");
+            throw new OAuthException(OAuthErrorCode.USERINFO_EMPTY, "Empty userinfo response from google");
+        }
+        if (res.email() == null || res.email().isBlank()) {
+            throw new OAuthException(OAuthErrorCode.EMAIL_MISSING,
+                    "Google userinfo does not contain email. "
+                            + "Ensure 'email' scope is included in oauth.google.scope and OAuth consent screen.");
         }
 
-        return new OAuthUserInfo("google", res.sub(), res.email(), res.name(), res.picture());
+        return new OAuthUserInfo(OAuthProvider.GOOGLE.lower(), res.sub(), res.email(), res.name(), res.picture());
     }
 
     private static void requireEnabled(OAuthProperties.Provider p, OAuthProvider provider) {
         if (!p.isEnabled()) {
-            throw new OAuthException(
+            throw new OAuthException(OAuthErrorCode.PROVIDER_NOT_CONFIGURED,
                     "oauth." + provider.lower() + " is not configured (client-id missing)");
         }
     }

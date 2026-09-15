@@ -38,12 +38,12 @@ public class SignupTokenProvider {
 
     private static SecretKey buildSigningKey(String secretKey) {
         if (secretKey == null || secretKey.isBlank()) {
-            throw new IllegalStateException(
+            throw new SignupTokenException(SignupTokenErrorCode.SECRET_KEY_MISSING,
                     "signup-token.secret-key must be configured");
         }
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < MIN_SECRET_BYTES) {
-            throw new IllegalStateException(
+            throw new SignupTokenException(SignupTokenErrorCode.SECRET_KEY_TOO_SHORT,
                     "signup-token.secret-key must be at least " + MIN_SECRET_BYTES
                             + " bytes (256 bits) for HS256; got " + keyBytes.length + " bytes. "
                             + "Generate one with: openssl rand -base64 48");
@@ -127,7 +127,7 @@ public class SignupTokenProvider {
 
         String type = claims.get(CLAIM_TYPE, String.class);
         if (!TYPE_VALUE.equals(type)) {
-            throw new IllegalArgumentException(
+            throw new SignupTokenException(SignupTokenErrorCode.TOKEN_TYPE_MISMATCH,
                     "Token is not a signup token (expected type=" + TYPE_VALUE + ", got type=" + type + ")");
         }
 

@@ -10,6 +10,7 @@ public class JwtProperties {
     private long accessTokenExpiration = 1_800_000L;
     private long refreshTokenExpiration = 1_209_600_000L;
     private String redisKeyPrefix = "RT:";
+    private RefreshCookie refreshCookie = new RefreshCookie();
 
     @PostConstruct
     void validate() {
@@ -26,6 +27,12 @@ public class JwtProperties {
             throw new IllegalStateException(
                     "jwt.refresh-token-expiration (" + refreshTokenExpiration + ") must be >= "
                             + "jwt.access-token-expiration (" + accessTokenExpiration + ")");
+        }
+        if ("None".equalsIgnoreCase(refreshCookie.getSameSite()) && !refreshCookie.isSecure()) {
+            throw new IllegalStateException(
+                    "jwt.refresh-cookie.same-site=None requires secure=true "
+                            + "(browsers drop the cookie otherwise). "
+                            + "For HTTP dev environments, use same-site=Lax and secure=false.");
         }
     }
 
@@ -45,12 +52,50 @@ public class JwtProperties {
     public String getRedisKeyPrefix() { return redisKeyPrefix; }
     public void setRedisKeyPrefix(String redisKeyPrefix) { this.redisKeyPrefix = redisKeyPrefix; }
 
+    public RefreshCookie getRefreshCookie() { return refreshCookie; }
+    public void setRefreshCookie(RefreshCookie refreshCookie) { this.refreshCookie = refreshCookie; }
+
     @Override
     public String toString() {
         return "JwtProperties{"
                 + "secretKey=" + (secretKey == null || secretKey.isEmpty() ? "[UNSET]" : "[MASKED]")
                 + ", accessTokenExpiration=" + accessTokenExpiration
                 + ", refreshTokenExpiration=" + refreshTokenExpiration
-                + ", redisKeyPrefix='" + redisKeyPrefix + "'}";
+                + ", redisKeyPrefix='" + redisKeyPrefix + '\''
+                + ", refreshCookie=" + refreshCookie + '}';
+    }
+
+    public static class RefreshCookie {
+        private String name = "refresh_token";
+        private String path = "/";
+        private String domain;
+        private boolean httpOnly = true;
+        private boolean secure = true;
+        private String sameSite = "None";
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
+        public String getPath() { return path; }
+        public void setPath(String path) { this.path = path; }
+
+        public String getDomain() { return domain; }
+        public void setDomain(String domain) { this.domain = domain; }
+
+        public boolean isHttpOnly() { return httpOnly; }
+        public void setHttpOnly(boolean httpOnly) { this.httpOnly = httpOnly; }
+
+        public boolean isSecure() { return secure; }
+        public void setSecure(boolean secure) { this.secure = secure; }
+
+        public String getSameSite() { return sameSite; }
+        public void setSameSite(String sameSite) { this.sameSite = sameSite; }
+
+        @Override
+        public String toString() {
+            return "RefreshCookie{name='" + name + "', path='" + path + "', domain='" + domain
+                    + "', httpOnly=" + httpOnly + ", secure=" + secure
+                    + ", sameSite='" + sameSite + "'}";
+        }
     }
 }

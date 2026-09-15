@@ -18,11 +18,22 @@ public class OAuthLoginService {
     }
 
     public OAuthUserInfo fetchUserInfo(String provider, String code) {
-        return fetchUserInfo(OAuthProvider.from(provider), code);
+        return fetchUserInfo(OAuthProvider.from(provider), code, null);
+    }
+
+    public OAuthUserInfo fetchUserInfo(String provider, String code, String codeVerifier) {
+        return fetchUserInfo(OAuthProvider.from(provider), code, codeVerifier);
     }
 
     public OAuthUserInfo fetchUserInfo(OAuthProvider provider, String code) {
-        OAuthTokenResponse token = tokenClient.exchange(provider, code);
+        return fetchUserInfo(provider, code, null);
+    }
+
+    /**
+     * PKCE 흐름: {@link OAuthStateService#validateAndConsume} 에서 반환된 code_verifier 를 전달.
+     */
+    public OAuthUserInfo fetchUserInfo(OAuthProvider provider, String code, String codeVerifier) {
+        OAuthTokenResponse token = tokenClient.exchange(provider, code, codeVerifier);
         return userInfoClient.fetch(provider, token.accessToken());
     }
 }

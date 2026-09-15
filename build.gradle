@@ -26,6 +26,7 @@ dependencies {
     compileOnly "org.springframework.boot:spring-boot-starter:${springBootVersion}"
     compileOnly "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
     compileOnly "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    compileOnly "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
 
     api "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
     runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
@@ -36,6 +37,7 @@ dependencies {
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
 }
 
 test {
@@ -53,8 +55,8 @@ publishing {
                 url = 'https://github.com/catomat0/spring_oauth_starter'
                 licenses {
                     license {
-                        name = 'MIT License'
-                        url = 'https://opensource.org/licenses/MIT'
+                        name = 'The Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
                 scm {

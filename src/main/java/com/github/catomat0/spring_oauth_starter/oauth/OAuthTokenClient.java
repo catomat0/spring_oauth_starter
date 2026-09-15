@@ -18,6 +18,13 @@ public class OAuthTokenClient {
     }
 
     public OAuthTokenResponse exchange(OAuthProvider provider, String code) {
+        return exchange(provider, code, null);
+    }
+
+    /**
+     * PKCE 흐름 지원: {@code codeVerifier} 를 함께 전달하면 form 에 {@code code_verifier} 파라미터 첨부.
+     */
+    public OAuthTokenResponse exchange(OAuthProvider provider, String code, String codeVerifier) {
         OAuthProperties.Provider p = resolve(provider);
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -28,6 +35,9 @@ public class OAuthTokenClient {
         if (p.getClientSecret() != null && !p.getClientSecret().isBlank()) {
             form.add("client_secret", p.getClientSecret());
         }
+        if (codeVerifier != null && !codeVerifier.isBlank()) {
+            form.add("code_verifier", codeVerifier);
+        }
 
         try {
             OAuthTokenResponse response = restClient.post()
@@ -37,13 +47,16 @@ public class OAuthTokenClient {
                     .retrieve()
                     .body(OAuthTokenResponse.class);
             if (response == null || response.accessToken() == null) {
-                throw new OAuthException(
+                throw new OAuthException(OAuthErrorCode.TOKEN_EXCHANGE_EMPTY,
                         "Empty token response from " + provider.lower());
             }
             return response;
+        } catch (OAuthException e) {
+            throw e;
         } catch (RestClientException e) {
-            throw new OAuthException(
-                    "Failed to exchange code for token with " + provider.lower(), e);
+            throw new OAuthException(OAuthErrorCode.TOKEN_EXCHANGE_FAILED,
+                    "Failed to exchange code for token with " + provider.lower()
+                            + " (uri=" + p.getTokenUri() + "): " + e.getMessage(), e);
         }
     }
 
@@ -53,7 +66,7 @@ public class OAuthTokenClient {
             case GOOGLE -> properties.getGoogle();
         };
         if (!p.isEnabled()) {
-            throw new OAuthException(
+            throw new OAuthException(OAuthErrorCode.PROVIDER_NOT_CONFIGURED,
                     "oauth." + provider.lower() + " is not configured (client-id missing)");
         }
         return p;
