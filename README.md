@@ -1,6 +1,12 @@
 # spring_oauth_starter
 
+[![Release](https://img.shields.io/github/v/release/catomat0/spring_oauth_starter?sort=semver)](https://github.com/catomat0/spring_oauth_starter/releases)
+[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/spring_oauth_starter/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (access/refresh) + 온보딩 signup token 을 자동 설정으로 제공합니다.
+
+📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/spring_oauth_starter/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/spring_oauth_starter/releases)**
 
 - **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 한 번에 (Kakao/Google 표준 엔드포인트 URI 하드코딩)
 - **CSRF `state` + PKCE (S256)** — `OAuthStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
