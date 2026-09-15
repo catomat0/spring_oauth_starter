@@ -3,7 +3,23 @@
 이 프로젝트의 모든 주요 변경사항은 이 파일에 기록됩니다.
 버전 형식은 [Semantic Versioning](https://semver.org/) 기준.
 
-## [1.1.0] - Unreleased
+## [1.1.1] - Unreleased
+
+### Changed
+- **예외 타입 일관성 정리** — 남아있던 `IllegalStateException` 5곳을 라이브러리 전용 예외로 통일.
+  - `JwtProperties.validate()` access/refresh expiration 검증 → `JwtException(EXPIRATION_INVALID)`
+  - `JwtProperties.validate()` refresh-cookie same-site 검증 → `JwtException(REFRESH_COOKIE_INSECURE_SAMESITE)`
+  - `OAuthProperties.validate()` state-ttl-seconds 검증 → `OAuthException(STATE_TTL_INVALID)`
+  - `OAuthProperties.Provider.requireField()` → `OAuthException(PROVIDER_INCOMPLETE)`
+  - `OAuthProperties.Provider.requireHttps()` → `OAuthException(INSECURE_URI)`
+
+### Added
+- **신규 에러 코드**
+  - `JwtErrorCode`: `EXPIRATION_INVALID`, `REFRESH_COOKIE_INSECURE_SAMESITE`
+  - `OAuthErrorCode`: `PROVIDER_INCOMPLETE`, `STATE_TTL_INVALID`
+- README 배지 (Release / JavaDoc / License) + 상단 링크 라인.
+
+## [1.1.0] - 2026-09-15
 
 ### Added
 - **OAuth2 (Kakao/Google) 로그인** — code → access_token → userinfo 를 `OAuthLoginService.fetchUserInfo()` 한 번에.
