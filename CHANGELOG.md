@@ -3,7 +3,42 @@
 이 프로젝트의 모든 주요 변경사항은 이 파일에 기록됩니다.
 버전 형식은 [Semantic Versioning](https://semver.org/) 기준.
 
-## [1.1.1] - Unreleased
+## [2.0.0] - Unreleased
+
+### Changed (BREAKING)
+- **프로젝트 리브랜딩**: `spring_oauth_starter` → **`oauth-helper`** (약칭 OAH)
+  - GitHub repo: `catomat0/spring_oauth_starter` → `catomat0/oauth-helper`
+  - Maven artifactId: `spring_oauth_starter` → `oauth-helper`
+  - Java 패키지: `com.github.catomat0.spring_oauth_starter.*` → `com.github.catomat0.oauthhelper.*`
+- **모든 public 클래스에 `Oah` prefix 추가** (외부 사용자가 임포트하는 리소스). 총 31개 클래스 rename.
+  - OAuth 관련 (`OAuth*` → `Oah*`): `OAuthProvider`→`OahProvider`, `OAuthLoginService`→`OahLoginService`, `OAuthStateService`→`OahStateService`, `OAuthAuthorizeUrlBuilder`→`OahAuthorizeUrlBuilder`, `OAuthProperties`→`OahProperties`, `OAuthException`→`OahException`, `OAuthErrorCode`→`OahErrorCode`, `OAuthUserInfo`→`OahUserInfo`, `OAuthTokenClient`→`OahTokenClient`, `OAuthUserInfoClient`→`OahUserInfoClient`, `OAuthAuthorizeParams`→`OahAuthorizeParams`
+  - DTO: `OAuthTokenResponse`→`OahTokenResponse`, `KakaoUserInfoResponse`→`OahKakaoUserInfoResponse`, `GoogleUserInfoResponse`→`OahGoogleUserInfoResponse`
+  - JWT (`Jwt*`→`OahJwt*`, `RefreshToken*`→`OahRefreshToken*`): `JwtProvider`, `JwtProperties`, `JwtPayload`, `JwtException`, `JwtErrorCode`, `JwtAuthenticationFilter`, `RefreshTokenService`, `RefreshTokenCookieWriter`
+  - Signup Token (`SignupToken*`→`OahSignupToken*`): 9개 클래스
+- AutoConfiguration 내부 클래스는 rename 하지 않음 (사용자 직접 임포트 안 함) — 단 `SpringOAuthStarterAutoConfiguration` → `OauthHelperAutoConfiguration` 은 프로젝트명 변경 반영.
+
+### Migration guide (v1.1.x → v2.0.0)
+1. `build.gradle` 의존성 좌표 변경:
+   ```gradle
+   // before
+   implementation 'com.github.catomat0:spring_oauth_starter:1.1.1'
+   // after
+   implementation 'com.github.catomat0:oauth-helper:2.0.0'
+   ```
+   Maven repo URL 도 갱신:
+   ```gradle
+   url = uri('https://maven.pkg.github.com/catomat0/oauth-helper')
+   ```
+2. 모든 import 문 갱신:
+   ```java
+   // before
+   import com.github.catomat0.spring_oauth_starter.jwt.JwtProvider;
+   // after
+   import com.github.catomat0.oauthhelper.jwt.OahJwtProvider;
+   ```
+3. 클래스 타입 참조 갱신 (IDE 의 rename refactor 기능 활용). 위 rename 표 참고.
+
+## [1.1.1] - 2026-09-15
 
 ### Changed
 - **예외 타입 일관성 정리** — 남아있던 `IllegalStateException` 5곳을 라이브러리 전용 예외로 통일.

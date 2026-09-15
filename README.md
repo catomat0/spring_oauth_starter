@@ -1,19 +1,19 @@
-# spring_oauth_starter
+# oauth-helper
 
-[![Release](https://img.shields.io/github/v/release/catomat0/spring_oauth_starter?sort=semver)](https://github.com/catomat0/spring_oauth_starter/releases)
-[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/spring_oauth_starter/)
+[![Release](https://img.shields.io/github/v/release/catomat0/oauth-helper?sort=semver)](https://github.com/catomat0/oauth-helper/releases)
+[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/oauth-helper/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (access/refresh) + 온보딩 signup token 을 자동 설정으로 제공합니다.
 
-📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/spring_oauth_starter/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/spring_oauth_starter/releases)**
+📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/oauth-helper/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/oauth-helper/releases)**
 
 - **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 한 번에 (Kakao/Google 표준 엔드포인트 URI 하드코딩)
-- **CSRF `state` + PKCE (S256)** — `OAuthStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
-- **`OAuthAuthorizeUrlBuilder`** — authorize URL 자동 조립 (state/PKCE/scope 포함)
+- **CSRF `state` + PKCE (S256)** — `OahStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
+- **`OahAuthorizeUrlBuilder`** — authorize URL 자동 조립 (state/PKCE/scope 포함)
 - **JWT** access/refresh 발급/검증 (JJWT 0.12.6, `type=ACCESS/REFRESH` 강제 구분)
-- **`JwtAuthenticationFilter`** — Bearer 토큰 → SecurityContext 자동 세팅 (Spring Security 있을 때만 등록)
-- **Refresh token** Redis `RT:{userId}` + GETDEL 원자적 rotation + `RefreshTokenCookieWriter` (HttpOnly)
+- **`OahJwtAuthenticationFilter`** — Bearer 토큰 → SecurityContext 자동 세팅 (Spring Security 있을 때만 등록)
+- **Refresh token** Redis `RT:{userId}` + GETDEL 원자적 rotation + `OahRefreshTokenCookieWriter` (HttpOnly)
 - **Signup token** — 온보딩 이탈 시 재개 (JWT + Redis + HttpOnly 쿠키)
 - **Spring Boot AutoConfiguration** — 빈 자동 등록, provider별 opt-in
 - **필수 종속성 부재 시 명시적 WARN 로그** — 조용한 실패 방지
@@ -40,7 +40,7 @@ gpr.token=ghp_xxxxxxxxxxxxxxxxxxxxx      # 본인이 발급한 PAT
 repositories {
     mavenCentral()
     maven {
-        url = uri('https://maven.pkg.github.com/catomat0/spring_oauth_starter')
+        url = uri('https://maven.pkg.github.com/catomat0/oauth-helper')
         credentials {
             username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
             password = project.findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN')
@@ -49,7 +49,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.catomat0:spring_oauth_starter:1.1.0'
+    implementation 'com.github.catomat0:oauth-helper:2.0.0'
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 - `spring-boot-starter-web`
 - `spring-boot-starter-data-redis` (refresh/signup/state 저장용)
 - Redis 서버 **6.2 이상** (`GETDEL` 사용)
-- `spring-boot-starter-security` (선택 — `JwtAuthenticationFilter` 자동 등록 원할 때)
+- `spring-boot-starter-security` (선택 — `OahJwtAuthenticationFilter` 자동 등록 원할 때)
 
 ### 1-2. 인증/개인정보 관련 안내
 
@@ -69,7 +69,7 @@ dependencies {
 
 | 항목 | 값 | 의미 |
 |---|---|---|
-| `url = ...catomat0/spring_oauth_starter` | 고정 | 패키지가 있는 위치 (내 계정) |
+| `url = ...catomat0/oauth-helper` | 고정 | 패키지가 있는 위치 (내 계정) |
 | `gpr.user` | 본인 GitHub username | 인증 주체 (다운받는 사람) |
 | `gpr.token` | 본인이 발급한 PAT | 인증 자격 (다운받는 사람) |
 
@@ -98,14 +98,14 @@ Public repo 이므로 `repo` 권한은 필요 없음. 최소 권한 원칙 준�
 
 ## 2. Developer Console 세팅
 
-> ⚠️ **두 provider 모두 email 을 사용자정보로 받아야 합니다.** 콘솔에서 email scope/동의항목을 반드시 활성화하세요. 그래야 라이브러리가 `OAuthUserInfo.email()` 을 정상적으로 채워 회원 조회/가입에 사용할 수 있습니다.
+> ⚠️ **두 provider 모두 email 을 사용자정보로 받아야 합니다.** 콘솔에서 email scope/동의항목을 반드시 활성화하세요. 그래야 라이브러리가 `OahUserInfo.email()` 을 정상적으로 채워 회원 조회/가입에 사용할 수 있습니다.
 
 ### Kakao Developers
 1. https://developers.kakao.com/ → 로그인 → **내 애플리케이션 → 애플리케이션 추가하기**
 2. **앱 키** 탭에서 `REST API 키` 복사 → `KAKAO_CLIENT_ID`
 3. **카카오 로그인 → 활성화** ON
 4. **Redirect URI 등록**: `https://your-domain.com/api/auth/oauth2/kakao/callback` (개발용은 `http://localhost:8080/...`)
-5. **동의항목** — ⚠️ **카카오계정(이메일) 을 반드시 "필수 동의"** 로 설정. 미설정 시 `OAuthException(EMAIL_MISSING)` 발생 (v1.1.0부터 fallback email 제거됨)
+5. **동의항목** — ⚠️ **카카오계정(이메일) 을 반드시 "필수 동의"** 로 설정. 미설정 시 `OahException(EMAIL_MISSING)` 발생 (v1.1.0부터 fallback email 제거됨)
 6. **보안 → Client Secret**: 사용 상태 ON → 코드 발급 → `KAKAO_CLIENT_SECRET`
 
 ### Google Cloud Console
@@ -183,7 +183,7 @@ jwt:
   access-token-expiration: 1800000                    # ms, 디폴트 30분
   refresh-token-expiration: 1209600000                # ms, 디폴트 14일
   redis-key-prefix: "RT:"                             # 디폴트 RT:
-  refresh-cookie:                                     # RefreshTokenCookieWriter 세팅
+  refresh-cookie:                                     # OahRefreshTokenCookieWriter 세팅
     name: refresh_token
     path: /
     http-only: true
@@ -235,7 +235,7 @@ openssl rand -base64 48    # jwt.secret-key 용
 openssl rand -base64 48    # signup-token.secret-key 용 (별도로 한 번 더)
 ```
 
-**Prefix 충돌 방지** — startup 시 `SignupTokenException(REDIS_PREFIX_COLLISION)` 로 fail-fast. 세 prefix 는 반드시 서로 달라야 함 (디폴트 `ST:` / `RT:` / `OS:` 그대로 쓰면 안전).
+**Prefix 충돌 방지** — startup 시 `OahSignupTokenException(REDIS_PREFIX_COLLISION)` 로 fail-fast. 세 prefix 는 반드시 서로 달라야 함 (디폴트 `ST:` / `RT:` / `OS:` 그대로 쓰면 안전).
 
 ---
 
@@ -248,24 +248,24 @@ openssl rand -base64 48    # signup-token.secret-key 용 (별도로 한 번 더)
 public class AuthController {
 
     // OAuth
-    private final OAuthStateService oauthStateService;
-    private final OAuthAuthorizeUrlBuilder oauthAuthorizeUrlBuilder;
-    private final OAuthLoginService oauthLoginService;
+    private final OahStateService oauthStateService;
+    private final OahAuthorizeUrlBuilder oauthAuthorizeUrlBuilder;
+    private final OahLoginService oauthLoginService;
     // JWT
-    private final JwtProvider jwtProvider;
-    private final RefreshTokenService refreshTokenService;
-    private final RefreshTokenCookieWriter refreshCookieWriter;
+    private final OahJwtProvider jwtProvider;
+    private final OahRefreshTokenService refreshTokenService;
+    private final OahRefreshTokenCookieWriter refreshCookieWriter;
     // Signup token
-    private final SignupTokenProvider signupTokenProvider;
-    private final SignupTokenService signupTokenService;
-    private final SignupTokenCookieWriter signupCookieWriter;
+    private final OahSignupTokenProvider signupTokenProvider;
+    private final OahSignupTokenService signupTokenService;
+    private final OahSignupTokenCookieWriter signupCookieWriter;
 
     private final UserRepository userRepository;
 
     /** 1) 프론트가 이 엔드포인트로 redirect → 라이브러리가 state + PKCE 생성 후 Kakao/Google authorize URL 로 redirect */
     @GetMapping("/oauth2/{provider}/authorize")
     public void authorize(@PathVariable String provider, HttpServletResponse response) throws IOException {
-        OAuthAuthorizeParams params = oauthStateService.issue(provider);
+        OahAuthorizeParams params = oauthStateService.issue(provider);
         String url = oauthAuthorizeUrlBuilder.build(provider, params);
         response.sendRedirect(url);
     }
@@ -278,9 +278,9 @@ public class AuthController {
                                      HttpServletResponse response) {
         String codeVerifier = oauthStateService.validateAndConsume(state, provider);
         if (codeVerifier == null) {
-            throw new OAuthException(OAuthErrorCode.STATE_INVALID, "Invalid or reused state");
+            throw new OahException(OahErrorCode.STATE_INVALID, "Invalid or reused state");
         }
-        OAuthUserInfo info = oauthLoginService.fetchUserInfo(provider, code, codeVerifier);
+        OahUserInfo info = oauthLoginService.fetchUserInfo(provider, code, codeVerifier);
 
         return userRepository
                 .findByProviderAndProviderId(info.provider(), info.providerId())
@@ -299,7 +299,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("registered", true));
     }
 
-    private ResponseEntity<?> issueSignupToken(OAuthUserInfo info, HttpServletResponse response) {
+    private ResponseEntity<?> issueSignupToken(OahUserInfo info, HttpServletResponse response) {
         String token = signupTokenProvider.builder(info.provider(), info.providerId(), info.email())
                 .claim("nickname", info.nickname())
                 .claim("profileImage", info.profileImage())
@@ -318,9 +318,9 @@ public class AuthController {
 public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
     String oldRefresh = refreshCookieWriter.read(request);
     if (oldRefresh == null || !jwtProvider.validateRefresh(oldRefresh)) {
-        throw new JwtException(JwtErrorCode.TOKEN_TYPE_MISMATCH, "Invalid refresh token");
+        throw new OahJwtException(OahJwtErrorCode.TOKEN_TYPE_MISMATCH, "Invalid refresh token");
     }
-    JwtPayload p = jwtProvider.parseRefresh(oldRefresh);
+    OahJwtPayload p = jwtProvider.parseRefresh(oldRefresh);
 
     // 원자적 소비 — 이전 refresh 재사용 시 감지
     if (!refreshTokenService.validateAndConsume(p.userId(), oldRefresh)) {
@@ -347,9 +347,9 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
                                HttpServletResponse response) {
     String token = signupCookieWriter.read(request);
     if (token == null || !signupTokenProvider.validate(token)) {
-        throw new SignupTokenException(SignupTokenErrorCode.TOKEN_TYPE_MISMATCH, "Invalid signup token");
+        throw new OahSignupTokenException(OahSignupTokenErrorCode.TOKEN_TYPE_MISMATCH, "Invalid signup token");
     }
-    SignupTokenPayload payload = signupTokenProvider.parse(token);
+    OahSignupTokenPayload payload = signupTokenProvider.parse(token);
     if (!signupTokenService.validateAndConsume(payload.provider(), payload.providerId(), token)) {
         throw new IllegalStateException("Signup token expired or already used");
     }
@@ -369,7 +369,7 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
 }
 ```
 
-### 4-3. SecurityConfig 통합 (`JwtAuthenticationFilter` 등록)
+### 4-3. SecurityConfig 통합 (`OahJwtAuthenticationFilter` 등록)
 
 ```java
 @Configuration
@@ -377,7 +377,7 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtFilter;   // 라이브러리가 자동 등록한 빈 주입
+    private final OahJwtAuthenticationFilter jwtFilter;   // 라이브러리가 자동 등록한 빈 주입
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -401,26 +401,26 @@ public class SecurityConfig {
 
 | 클래스 | 메서드 | 설명 |
 |---|---|---|
-| `OAuthStateService` | `issue(provider)` → `OAuthAuthorizeParams` | 🌟 state + PKCE code_challenge 발급 (Redis 저장) |
+| `OahStateService` | `issue(provider)` → `OahAuthorizeParams` | 🌟 state + PKCE code_challenge 발급 (Redis 저장) |
 | | `validateAndConsume(state, provider)` → codeVerifier | 🌟 원자적 GETDEL, code_verifier 반환 |
-| `OAuthAuthorizeUrlBuilder` | `build(provider, params)` | authorize URL 조립 (state/PKCE/scope 포함) |
-| `OAuthLoginService` | `fetchUserInfo(provider, code)` | 비-PKCE code → userinfo |
+| `OahAuthorizeUrlBuilder` | `build(provider, params)` | authorize URL 조립 (state/PKCE/scope 포함) |
+| `OahLoginService` | `fetchUserInfo(provider, code)` | 비-PKCE code → userinfo |
 | | `fetchUserInfo(provider, code, codeVerifier)` | 🌟 PKCE code → userinfo |
-| `OAuthTokenClient` | `exchange(provider, code[, codeVerifier])` | 저수준 token 교환 |
-| `OAuthUserInfoClient` | `fetch(provider, accessToken)` | 저수준 userinfo 조회 |
-| `JwtProvider` | `generateAccessToken(userId, role)` | access 발급 (`type=ACCESS`) |
+| `OahTokenClient` | `exchange(provider, code[, codeVerifier])` | 저수준 token 교환 |
+| `OahUserInfoClient` | `fetch(provider, accessToken)` | 저수준 userinfo 조회 |
+| `OahJwtProvider` | `generateAccessToken(userId, role)` | access 발급 (`type=ACCESS`) |
 | | `generateRefreshToken(userId)` | refresh 발급 (`type=REFRESH`) |
 | | `validateAccess/validateRefresh(token)` | type-aware 검증 |
-| | `parseAccess/parseRefresh(token)` → `JwtPayload` | type 불일치 시 예외 |
-| `RefreshTokenService` | `save/get/validate/delete` | Redis `RT:{userId}` |
+| | `parseAccess/parseRefresh(token)` → `OahJwtPayload` | type 불일치 시 예외 |
+| `OahRefreshTokenService` | `save/get/validate/delete` | Redis `RT:{userId}` |
 | | `validateAndConsume` (Redis 6.2+) | 🌟 원자적 rotation |
-| `RefreshTokenCookieWriter` | `write/read/clear` | 🌟 refresh HttpOnly 쿠키 관리 |
-| `JwtAuthenticationFilter` | (Spring Security 필터) | 🌟 Bearer → SecurityContext 자동 세팅 |
-| `SignupTokenProvider` | `builder(provider,id,email)` | fluent 발급, 임의 클레임 추가 |
+| `OahRefreshTokenCookieWriter` | `write/read/clear` | 🌟 refresh HttpOnly 쿠키 관리 |
+| `OahJwtAuthenticationFilter` | (Spring Security 필터) | 🌟 Bearer → SecurityContext 자동 세팅 |
+| `OahSignupTokenProvider` | `builder(provider,id,email)` | fluent 발급, 임의 클레임 추가 |
 | | `validate(token)`, `parse(token)` | 서명/타입 검증 |
-| `SignupTokenService` | `validateAndConsume` | 회원가입 완료 시 원자적 소비 |
-| `SignupTokenCookieWriter` | `write/read/clear` | HttpOnly 쿠키 관리 |
-| `SignupTokenSecurity` | `corsForCookieAuth(...)` | CORS 헬퍼 |
+| `OahSignupTokenService` | `validateAndConsume` | 회원가입 완료 시 원자적 소비 |
+| `OahSignupTokenCookieWriter` | `write/read/clear` | HttpOnly 쿠키 관리 |
+| `OahSignupTokenSecurity` | `corsForCookieAuth(...)` | CORS 헬퍼 |
 
 ---
 
@@ -439,7 +439,7 @@ oauth:
 **RestClient 자체를 커스터마이징** (인터셉터/프록시 등):
 ```java
 @Bean("oauthRestClient")
-public RestClient oauthRestClient(OAuthProperties props) {
+public RestClient oauthRestClient(OahProperties props) {
     return RestClient.builder()
             .requestFactory(myCustomFactory)
             .requestInterceptor(myInterceptor)
@@ -451,12 +451,12 @@ public RestClient oauthRestClient(OAuthProperties props) {
 
 ## 7. 에러 코드 & 트러블슈팅
 
-라이브러리 예외는 `OAuthException` / `JwtException` / `SignupTokenException` 셋. 각각 `code()` 로 세부 케이스 분기 가능.
+라이브러리 예외는 `OahException` / `OahJwtException` / `OahSignupTokenException` 셋. 각각 `code()` 로 세부 케이스 분기 가능.
 
 ```java
 try {
-    OAuthUserInfo info = oauthLoginService.fetchUserInfo(provider, code);
-} catch (OAuthException e) {
+    OahUserInfo info = oauthLoginService.fetchUserInfo(provider, code);
+} catch (OahException e) {
     switch (e.code()) {
         case PROVIDER_UNKNOWN            -> // 잘못된 provider 이름 (kakao/google 이외)
         case PROVIDER_NOT_CONFIGURED     -> // application.yml 미설정
@@ -474,28 +474,28 @@ try {
 }
 ```
 
-**JwtErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `TOKEN_TYPE_MISMATCH`, `EXPIRATION_INVALID`, `REFRESH_COOKIE_INSECURE_SAMESITE`
-**SignupTokenErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `COOKIE_INSECURE_SAMESITE`, `EXPIRATION_INVALID`, `TOKEN_TYPE_MISMATCH`, `REDIS_PREFIX_COLLISION`
+**OahJwtErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `TOKEN_TYPE_MISMATCH`, `EXPIRATION_INVALID`, `REFRESH_COOKIE_INSECURE_SAMESITE`
+**OahSignupTokenErrorCode**: `SECRET_KEY_MISSING`, `SECRET_KEY_TOO_SHORT`, `COOKIE_INSECURE_SAMESITE`, `EXPIRATION_INVALID`, `TOKEN_TYPE_MISMATCH`, `REDIS_PREFIX_COLLISION`
 
 ### 세팅/연결 실패 케이스
 
 | 증상 / 에러 코드 | 원인 / 해결 |
 |---|---|
-| startup `JwtException(SECRET_KEY_MISSING)` | `jwt.secret-key` 미설정. 환경변수 확인 |
-| startup `JwtException(SECRET_KEY_TOO_SHORT)` | secret 32byte 미만. `openssl rand -base64 48` |
-| startup `OAuthException(PROVIDER_INCOMPLETE)` | provider client-id 는 있는데 다른 필드 누락. 위 `application.yml` 예시 참고 |
-| startup `OAuthException(INSECURE_URI)` | http:// URL 설정 시 client_secret 평문 노출 위험 → https:// 강제 |
-| startup `OAuthException(STATE_TTL_INVALID)` | `oauth.state-ttl-seconds` 값이 0 이하 |
-| startup `JwtException(EXPIRATION_INVALID)` | access/refresh expiration 이 0 이하 or refresh < access |
-| startup `JwtException(REFRESH_COOKIE_INSECURE_SAMESITE)` | `jwt.refresh-cookie.same-site=None` 인데 `secure=false`. 브라우저가 쿠키 drop |
-| startup WARN `RefreshTokenService will NOT be registered — RedisTemplate missing` | `spring-boot-starter-data-redis` 미추가. Redis 안 쓰고 access-only 라면 무시 가능 |
-| `OAuthException(PROVIDER_UNKNOWN)` | provider path variable 이 kakao/google 이외. URL 오탈자 확인 |
-| `OAuthException(PROVIDER_NOT_CONFIGURED)` | 호출한 provider config 미설정. `oauth.<provider>.client-id` 확인 |
-| `OAuthException(TOKEN_EXCHANGE_FAILED)` | redirect_uri 불일치 or code 만료(1분) or Kakao/Google 서버 5xx. 메시지의 `uri=` 값과 콘솔 등록 URI 대조 |
-| `OAuthException(TOKEN_EXCHANGE_EMPTY)` | 200 OK 지만 access_token null. Kakao/Google 앱 상태 (검수/일시 정지) 확인 |
-| `OAuthException(USERINFO_FETCH_FAILED)` | userinfo 엔드포인트 호출 실패. 네트워크/scope 확인 |
-| `OAuthException(EMAIL_MISSING)` | 콘솔에서 email scope 미설정. Kakao: '카카오계정(이메일)' 필수 동의 / Google: `email` scope 추가 |
-| `JwtException(TOKEN_TYPE_MISMATCH)` | access token 자리에 refresh 넣었거나 반대. 정상 동작 |
+| startup `OahJwtException(SECRET_KEY_MISSING)` | `jwt.secret-key` 미설정. 환경변수 확인 |
+| startup `OahJwtException(SECRET_KEY_TOO_SHORT)` | secret 32byte 미만. `openssl rand -base64 48` |
+| startup `OahException(PROVIDER_INCOMPLETE)` | provider client-id 는 있는데 다른 필드 누락. 위 `application.yml` 예시 참고 |
+| startup `OahException(INSECURE_URI)` | http:// URL 설정 시 client_secret 평문 노출 위험 → https:// 강제 |
+| startup `OahException(STATE_TTL_INVALID)` | `oauth.state-ttl-seconds` 값이 0 이하 |
+| startup `OahJwtException(EXPIRATION_INVALID)` | access/refresh expiration 이 0 이하 or refresh < access |
+| startup `OahJwtException(REFRESH_COOKIE_INSECURE_SAMESITE)` | `jwt.refresh-cookie.same-site=None` 인데 `secure=false`. 브라우저가 쿠키 drop |
+| startup WARN `OahRefreshTokenService will NOT be registered — RedisTemplate missing` | `spring-boot-starter-data-redis` 미추가. Redis 안 쓰고 access-only 라면 무시 가능 |
+| `OahException(PROVIDER_UNKNOWN)` | provider path variable 이 kakao/google 이외. URL 오탈자 확인 |
+| `OahException(PROVIDER_NOT_CONFIGURED)` | 호출한 provider config 미설정. `oauth.<provider>.client-id` 확인 |
+| `OahException(TOKEN_EXCHANGE_FAILED)` | redirect_uri 불일치 or code 만료(1분) or Kakao/Google 서버 5xx. 메시지의 `uri=` 값과 콘솔 등록 URI 대조 |
+| `OahException(TOKEN_EXCHANGE_EMPTY)` | 200 OK 지만 access_token null. Kakao/Google 앱 상태 (검수/일시 정지) 확인 |
+| `OahException(USERINFO_FETCH_FAILED)` | userinfo 엔드포인트 호출 실패. 네트워크/scope 확인 |
+| `OahException(EMAIL_MISSING)` | 콘솔에서 email scope 미설정. Kakao: '카카오계정(이메일)' 필수 동의 / Google: `email` scope 추가 |
+| `OahJwtException(TOKEN_TYPE_MISMATCH)` | access token 자리에 refresh 넣었거나 반대. 정상 동작 |
 | refresh 재사용 시도 시 401 | `validateAndConsume` 로 이미 GETDEL 됨. 정상 동작 (rotation 원자성 보장) |
 | `RedisConnectionFailureException` | Redis 서버 다운/네트워크 단절. `spring.data.redis.host/port` 확인 |
 | `io.jsonwebtoken.ExpiredJwtException` | 토큰 만료. `validateAccess()` 로 먼저 체크한 후 parse |
@@ -504,27 +504,27 @@ try {
 
 ## 8. CSRF `state` + PKCE 동작 원리
 
-라이브러리가 `OAuthStateService` + `OAuthAuthorizeUrlBuilder` 자동 등록 (Redis 필요). 위 §4 예시대로 두 엔드포인트만 만들면 됨. 내부 동작:
+라이브러리가 `OahStateService` + `OahAuthorizeUrlBuilder` 자동 등록 (Redis 필요). 위 §4 예시대로 두 엔드포인트만 만들면 됨. 내부 동작:
 
-**authorize 단계 (`OAuthStateService.issue`)**
+**authorize 단계 (`OahStateService.issue`)**
 1. 24 byte cryptographically secure random 생성 → Base64URL 인코딩 → `state`
 2. 32 byte 랜덤 → `code_verifier`
 3. `code_challenge = base64url(sha256(code_verifier))`
 4. Redis `OS:<state>` 에 `{provider}|{codeVerifier}` 저장 (TTL 5분, 프로퍼티로 조절)
-5. `OAuthAuthorizeParams(state, codeChallenge, "S256")` 반환
+5. `OahAuthorizeParams(state, codeChallenge, "S256")` 반환
 
-**callback 단계 (`OAuthStateService.validateAndConsume`)**
+**callback 단계 (`OahStateService.validateAndConsume`)**
 1. Redis `GETDEL OS:<state>` — 원자적 조회+삭제
 2. 저장된 provider 와 요청의 provider 를 **timing-safe compare**
 3. 일치 시 `codeVerifier` 반환, 불일치/만료/재사용 시 `null`
-4. `codeVerifier` 를 `OAuthLoginService.fetchUserInfo(provider, code, codeVerifier)` 에 전달 → token 교환 시 함께 전송 → 서버가 code_challenge 와 검증
+4. `codeVerifier` 를 `OahLoginService.fetchUserInfo(provider, code, codeVerifier)` 에 전달 → token 교환 시 함께 전송 → 서버가 code_challenge 와 검증
 
 **방어되는 공격**
 - **CSRF** — state 없거나 재사용 시 검증 실패 → 요청 거부
 - **Code injection** — 공격자가 훔친 code 로 자기 재현하려 해도 code_verifier 를 모름
 - **Replay** — state 는 1회성 (GETDEL)
 
-**Refresh token** — 위 §4-1 예시처럼 `RefreshTokenCookieWriter` 로 HttpOnly 쿠키에 저장. body/localStorage 저장은 XSS 취약.
+**Refresh token** — 위 §4-1 예시처럼 `OahRefreshTokenCookieWriter` 로 HttpOnly 쿠키에 저장. body/localStorage 저장은 XSS 취약.
 
 ---
 

@@ -1,4 +1,4 @@
-com.github.catomat0.spring_oauth_starter.signuptoken.autoconfigure.SignupTokenAutoConfiguration
-com.github.catomat0.spring_oauth_starter.oauth.autoconfigure.OAuthAutoConfiguration
-com.github.catomat0.spring_oauth_starter.jwt.autoconfigure.JwtAutoConfiguration
-com.github.catomat0.spring_oauth_starter.autoconfigure.SpringOAuthStarterAutoConfiguration
+com.github.catomat0.oauthhelper.signuptoken.autoconfigure.SignupTokenAutoConfiguration
+com.github.catomat0.oauthhelper.oauth.autoconfigure.OAuthAutoConfiguration
+com.github.catomat0.oauthhelper.jwt.autoconfigure.JwtAutoConfiguration
+com.github.catomat0.oauthhelper.autoconfigure.OauthHelperAutoConfiguration

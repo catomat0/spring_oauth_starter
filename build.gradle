@@ -4,8 +4,12 @@ plugins {
 }
 
 group = 'com.github.catomat0'
-version = (System.getenv('RELEASE_VERSION') ?: findProperty('releaseVersion') ?: '1.0.0')
+version = (System.getenv('RELEASE_VERSION') ?: findProperty('releaseVersion') ?: '2.0.0')
         .toString().replaceFirst(/^v/, '')
+
+base {
+    archivesName = 'oauth-helper'
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -48,11 +52,12 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            artifactId = 'oauth-helper'
 
             pom {
-                name = 'spring_oauth_starter'
+                name = 'oauth-helper'
                 description = 'Drop-in Spring Boot OAuth2 login (Google/Kakao) with JWT and Redis-backed signup token for onboarding'
-                url = 'https://github.com/catomat0/spring_oauth_starter'
+                url = 'https://github.com/catomat0/oauth-helper'
                 licenses {
                     license {
                         name = 'The Apache License, Version 2.0'
@@ -60,8 +65,8 @@ publishing {
                     }
                 }
                 scm {
-                    url = 'https://github.com/catomat0/spring_oauth_starter'
-                    connection = 'scm:git:https://github.com/catomat0/spring_oauth_starter.git'
+                    url = 'https://github.com/catomat0/oauth-helper'
+                    connection = 'scm:git:https://github.com/catomat0/oauth-helper.git'
                 }
             }
         }
@@ -69,7 +74,7 @@ publishing {
     repositories {
         maven {
             name = 'GitHubPackages'
-            url = uri('https://maven.pkg.github.com/catomat0/spring_oauth_starter')
+            url = uri('https://maven.pkg.github.com/catomat0/oauth-helper')
             credentials {
                 username = System.getenv('GITHUB_ACTOR') ?: findProperty('gpr.user')
                 password = System.getenv('GITHUB_TOKEN') ?: findProperty('gpr.token')
