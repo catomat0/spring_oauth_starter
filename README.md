@@ -1,12 +1,12 @@
 # oauth-helper
 
-[![Release](https://img.shields.io/github/v/release/catomat0/oauth-helper?sort=semver)](https://github.com/catomat0/oauth-helper/releases)
-[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/oauth-helper/)
+[![Release](https://img.shields.io/github/v/release/catomat0/Oah?sort=semver)](https://github.com/catomat0/Oah/releases)
+[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/Oah/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (access/refresh) + 온보딩 signup token 을 자동 설정으로 제공합니다.
 
-📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/oauth-helper/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/oauth-helper/releases)**
+📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/Oah/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/Oah/releases)**
 
 - **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 한 번에 (Kakao/Google 표준 엔드포인트 URI 하드코딩)
 - **CSRF `state` + PKCE (S256)** — `OahStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
@@ -40,7 +40,7 @@ gpr.token=ghp_xxxxxxxxxxxxxxxxxxxxx      # 본인이 발급한 PAT
 repositories {
     mavenCentral()
     maven {
-        url = uri('https://maven.pkg.github.com/catomat0/oauth-helper')
+        url = uri('https://maven.pkg.github.com/catomat0/Oah')
         credentials {
             username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
             password = project.findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN')
@@ -69,7 +69,7 @@ dependencies {
 
 | 항목 | 값 | 의미 |
 |---|---|---|
-| `url = ...catomat0/oauth-helper` | 고정 | 패키지가 있는 위치 (내 계정) |
+| `url = ...catomat0/Oah` | 고정 | 패키지가 있는 위치 (내 계정) |
 | `gpr.user` | 본인 GitHub username | 인증 주체 (다운받는 사람) |
 | `gpr.token` | 본인이 발급한 PAT | 인증 자격 (다운받는 사람) |
 
