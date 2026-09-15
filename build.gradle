@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'com.github.catomat0'
+group = 'com.github.cattomato-libs'
 version = (System.getenv('RELEASE_VERSION') ?: findProperty('releaseVersion') ?: '2.1.0')
         .toString().replaceFirst(/^v/, '')
 
@@ -57,7 +57,7 @@ publishing {
             pom {
                 name = 'oauth-helper'
                 description = 'Drop-in Spring Boot OAuth2 login (Google/Kakao) with JWT and Redis-backed signup token for onboarding'
-                url = 'https://github.com/catomat0/Oah'
+                url = 'https://github.com/cattomato-libs/Oah'
                 licenses {
                     license {
                         name = 'The Apache License, Version 2.0'
@@ -65,8 +65,8 @@ publishing {
                     }
                 }
                 scm {
-                    url = 'https://github.com/catomat0/Oah'
-                    connection = 'scm:git:https://github.com/catomat0/Oah.git'
+                    url = 'https://github.com/cattomato-libs/Oah'
+                    connection = 'scm:git:https://github.com/cattomato-libs/Oah.git'
                 }
             }
         }
@@ -74,7 +74,7 @@ publishing {
     repositories {
         maven {
             name = 'GitHubPackages'
-            url = uri('https://maven.pkg.github.com/catomat0/Oah')
+            url = uri('https://maven.pkg.github.com/cattomato-libs/Oah')
             credentials {
                 username = System.getenv('GITHUB_ACTOR') ?: findProperty('gpr.user')
                 password = System.getenv('GITHUB_TOKEN') ?: findProperty('gpr.token')

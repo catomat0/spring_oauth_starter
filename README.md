@@ -1,12 +1,12 @@
 # oauth-helper
 
-[![Release](https://img.shields.io/github/v/release/catomat0/Oah?sort=semver)](https://github.com/catomat0/Oah/releases)
-[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://catomat0.github.io/Oah/)
+[![Release](https://img.shields.io/github/v/release/cattomato-libs/Oah?sort=semver)](https://github.com/cattomato-libs/Oah/releases)
+[![JavaDoc](https://img.shields.io/badge/javadoc-latest-blue)](https://cattomato-libs.github.io/Oah/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (access/refresh) + 온보딩 signup token 을 자동 설정으로 제공합니다.
 
-📖 **[JavaDoc API 레퍼런스](https://catomat0.github.io/Oah/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/catomat0/Oah/releases)**
+📖 **[JavaDoc API 레퍼런스](https://cattomato-libs.github.io/Oah/)** · **[CHANGELOG](CHANGELOG.md)** · **[Releases](https://github.com/cattomato-libs/Oah/releases)**
 
 - **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 한 번에 (Kakao/Google 표준 엔드포인트 URI 하드코딩)
 - **CSRF `state` + PKCE (S256)** — `OahStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
@@ -32,7 +32,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.catomat0:Oah:2.1.0'
+    implementation 'com.github.cattomato-libs:Oah:2.1.0'
 }
 ```
 
@@ -65,7 +65,7 @@ dependencies {
 </repositories>
 
 <dependency>
-    <groupId>com.github.catomat0</groupId>
+    <groupId>com.github.cattomato-libs</groupId>
     <artifactId>Oah</artifactId>
     <version>2.1.0</version>
 </dependency>
@@ -125,7 +125,7 @@ gpr.token=ghp_xxxxxxxxxxxxxxxxxxxxx
 ```gradle
 repositories {
     maven {
-        url = uri('https://maven.pkg.github.com/catomat0/Oah')
+        url = uri('https://maven.pkg.github.com/cattomato-libs/Oah')
         credentials {
             username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
             password = project.findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN')
@@ -134,13 +134,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.catomat0:oauth-helper:2.1.0'
+    implementation 'com.github.cattomato-libs:oauth-helper:2.1.0'
 }
 ```
 
 **Step 4. CI 별 세팅**
 
-- **GitHub Actions (같은 catomat0 계정 레포)** — workflow 에 `permissions: { packages: read }` 만 추가하면 자동 `GITHUB_TOKEN` 사용 가능
+- **GitHub Actions (같은 cattomato-libs 조직 레포)** — workflow 에 `permissions: { packages: read }` 만 추가하면 자동 `GITHUB_TOKEN` 사용 가능
 - **GitHub Actions (다른 계정/조직)** — 본인 PAT 을 secret 으로 등록 후 주입
   ```yaml
   - run: ./gradlew build

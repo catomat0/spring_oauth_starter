@@ -33,7 +33,7 @@
 
 ### Changed (BREAKING)
 - **프로젝트 리브랜딩**: `spring_oauth_starter` → **`oauth-helper`** (약칭 OAH)
-  - GitHub repo: `catomat0/spring_oauth_starter` → `catomat0/Oah`
+  - GitHub repo: `catomat0/spring_oauth_starter` → `cattomato-libs/Oah`
   - Maven artifactId: `spring_oauth_starter` → `oauth-helper`
   - Java 패키지: `com.github.catomat0.spring_oauth_starter.*` → `com.github.catomat0.oauthhelper.*`
 - **모든 public 클래스에 `Oah` prefix 추가** (외부 사용자가 임포트하는 리소스). 총 31개 클래스 rename.
@@ -47,13 +47,13 @@
 1. `build.gradle` 의존성 좌표 변경:
    ```gradle
    // before
-   implementation 'com.github.catomat0:spring_oauth_starter:1.1.1'
+   implementation 'com.github.cattomato-libs:spring_oauth_starter:1.1.1'
    // after
-   implementation 'com.github.catomat0:oauth-helper:2.0.0'
+   implementation 'com.github.cattomato-libs:oauth-helper:2.0.0'
    ```
    Maven repo URL 도 갱신:
    ```gradle
-   url = uri('https://maven.pkg.github.com/catomat0/Oah')
+   url = uri('https://maven.pkg.github.com/cattomato-libs/Oah')
    ```
 2. 모든 import 문 갱신:
    ```java
