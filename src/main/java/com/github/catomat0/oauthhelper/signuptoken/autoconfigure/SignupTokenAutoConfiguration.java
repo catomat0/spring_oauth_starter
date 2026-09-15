@@ -51,7 +51,6 @@ public class SignupTokenAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        @ConditionalOnBean({OahSignupTokenProvider.class, OahSignupTokenService.class, OahSignupTokenCookieWriter.class})
         OahSignup oahSignup(OahSignupTokenProvider provider,
                             OahSignupTokenService service,
                             OahSignupTokenCookieWriter cookie) {

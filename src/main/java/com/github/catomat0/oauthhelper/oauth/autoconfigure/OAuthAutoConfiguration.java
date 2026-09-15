@@ -76,7 +76,6 @@ public class OAuthAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        @ConditionalOnBean({OahStateService.class, OahAuthorizeUrlBuilder.class, OahLoginService.class})
         OahOAuth oahOAuth(OahStateService state,
                           OahAuthorizeUrlBuilder authorize,
                           OahLoginService login) {

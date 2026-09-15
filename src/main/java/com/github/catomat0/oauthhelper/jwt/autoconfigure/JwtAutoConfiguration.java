@@ -70,7 +70,6 @@ public class JwtAutoConfiguration {
 
         @Bean
         @ConditionalOnMissingBean
-        @ConditionalOnBean({OahJwtProvider.class, OahRefreshTokenService.class, OahRefreshTokenCookieWriter.class})
         OahJwt oahJwt(OahJwtProvider provider,
                       OahRefreshTokenService refresh,
                       OahRefreshTokenCookieWriter cookie) {
