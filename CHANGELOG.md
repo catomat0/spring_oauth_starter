@@ -3,7 +3,22 @@
 이 프로젝트의 모든 주요 변경사항은 이 파일에 기록됩니다.
 버전 형식은 [Semantic Versioning](https://semver.org/) 기준.
 
-## [2.1.0] - Unreleased
+## [2.1.2] - 2026-09-15
+
+### Fixed
+- **파사드 빈 (`OahOAuth` / `OahJwt` / `OahSignup`) 이 등록되지 않던 버그 수정**.
+  Nested `@Configuration` 내부의 `@ConditionalOnBean` 이 outer `@AutoConfiguration` 클래스의 빈을 조건 평가 시점에 발견하지 못해 (Spring Boot 컨피그 파싱 타이밍 이슈) 세 파사드 빈이 모두 등록 실패했음. 3개 파일에서 방어 조건 제거 (`OAuthAutoConfiguration`, `JwtAutoConfiguration`, `SignupTokenAutoConfiguration`).
+- 사용 방법 변경 없음. 이전에 파사드 주입에 의존한 사용자는 이제 정상 동작.
+
+## [2.1.1] - 2026-09-15
+
+### Changed
+- **README 재구성**: JitPack 을 primary 설치 경로로 승격. 소비자 프로젝트가 개인/조직/외부 레포 어디서든 credential 없이 사용 가능.
+  - JitPack 사용 예시 & CI/CD 스니펫 (GitHub Actions, Jenkins, Docker) 상단으로 이동
+  - GitHub Packages 방식은 접힘 섹션으로 이동 (private 배포/캐시 최적화 필요 시)
+- 시나리오별 비교표 추가 (JitPack vs GitHub Packages vs Maven Central)
+
+## [2.1.0] - 2026-09-15
 
 ### Added
 - **3개 도메인 파사드 record 추가** — 컨트롤러에서 개별 서비스 9개 주입 대신 파사드 3개 주입 가능. 기존 개별 빈도 그대로 등록됨 (non-breaking additive).
@@ -11,6 +26,8 @@
   - `OahJwt(provider, refresh, cookie)` — JWT 3개
   - `OahSignup(provider, service, cookie)` — Signup 3개
 - 파사드는 내부 3개 빈이 모두 존재할 때만 자동 등록 (`@ConditionalOnBean`). 예: Redis 미설정 → `OahJwt` 등록 안 됨 → `OahJwtProvider` 개별 주입.
+
+> ⚠️ **알려진 결함**: v2.1.0 / v2.1.1 에서는 위 파사드 3개가 실제로는 등록되지 않는 버그가 있습니다. **v2.1.2 이상 사용 권장.**
 
 ## [2.0.0] - 2026-09-15
 
