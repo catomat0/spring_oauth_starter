@@ -2,12 +2,16 @@
 
 Spring Boot용 소셜로그인 스타터. Kakao/Google OAuth2 로그인 + JWT (access/refresh) + 온보딩 signup token 을 자동 설정으로 제공합니다.
 
-- **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 를 한 번에 처리
+- **OAuth2 로그인** — Kakao/Google 콜백에서 code → access_token → userinfo 한 번에 (Kakao/Google 표준 엔드포인트 URI 하드코딩)
+- **CSRF `state` + PKCE (S256)** — `OAuthStateService` 가 state 와 code_challenge 자동 생성/원자적 검증
+- **`OAuthAuthorizeUrlBuilder`** — authorize URL 자동 조립 (state/PKCE/scope 포함)
 - **JWT** access/refresh 발급/검증 (JJWT 0.12.6, `type=ACCESS/REFRESH` 강제 구분)
-- **Refresh token Redis 저장** — `RT:{userId}` 키, GETDEL 기반 원자적 rotation
+- **`JwtAuthenticationFilter`** — Bearer 토큰 → SecurityContext 자동 세팅 (Spring Security 있을 때만 등록)
+- **Refresh token** Redis `RT:{userId}` + GETDEL 원자적 rotation + `RefreshTokenCookieWriter` (HttpOnly)
 - **Signup token** — 온보딩 이탈 시 재개 (JWT + Redis + HttpOnly 쿠키)
 - **Spring Boot AutoConfiguration** — 빈 자동 등록, provider별 opt-in
 - **필수 종속성 부재 시 명시적 WARN 로그** — 조용한 실패 방지
+- **에러 코드 enum** — `catch(e){ switch(e.code()){...} }` 로 세부 케이스 분기
 
 ---
 
@@ -39,14 +43,15 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.catomat0:spring_oauth_starter:1.0.0'
+    implementation 'com.github.catomat0:spring_oauth_starter:1.1.0'
 }
 ```
 
 **필수 런타임 의존성** (consumer 프로젝트에 이미 있어야 함):
 - `spring-boot-starter-web`
-- `spring-boot-starter-data-redis` (refresh token / signup token 저장용)
+- `spring-boot-starter-data-redis` (refresh/signup/state 저장용)
 - Redis 서버 **6.2 이상** (`GETDEL` 사용)
+- `spring-boot-starter-security` (선택 — `JwtAuthenticationFilter` 자동 등록 원할 때)
 
 ### 1-2. 인증/개인정보 관련 안내
 
@@ -94,7 +99,7 @@ Public repo 이므로 `repo` 권한은 필요 없음. 최소 권한 원칙 준�
 2. **앱 키** 탭에서 `REST API 키` 복사 → `KAKAO_CLIENT_ID`
 3. **카카오 로그인 → 활성화** ON
 4. **Redirect URI 등록**: `https://your-domain.com/api/auth/oauth2/kakao/callback` (개발용은 `http://localhost:8080/...`)
-5. **동의항목** — ⚠️ **카카오계정(이메일) 을 반드시 "필수 동의"** 로 설정. "선택 동의" 로 두면 사용자가 거부 시 email 이 null 로 옴 (라이브러리가 `kakao_{id}@kakao.user` 로 임시 fallback 하지만, 이 값으로 실제 사용자와 통신 불가하므로 프로덕션에서는 필수 동의 강력 권장)
+5. **동의항목** — ⚠️ **카카오계정(이메일) 을 반드시 "필수 동의"** 로 설정. 미설정 시 `OAuthException(EMAIL_MISSING)` 발생 (v1.1.0부터 fallback email 제거됨)
 6. **보안 → Client Secret**: 사용 상태 ON → 코드 발급 → `KAKAO_CLIENT_SECRET`
 
 ### Google Cloud Console
@@ -113,37 +118,74 @@ Public repo 이므로 `repo` 권한은 필요 없음. 최소 권한 원칙 준�
 
 ## 3. 설정 (`application.yml`)
 
+### 3-1. 최소 설정 (권장) — 5개 항목만
+
+Kakao/Google 표준 엔드포인트 URI 는 라이브러리가 하드코딩 디폴트로 제공. 필수 5개만 세팅하면 동작:
+
 ```yaml
 oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
     client-secret: ${KAKAO_CLIENT_SECRET}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/auth/oauth2/kakao/callback}
-    authorize-uri: https://kauth.kakao.com/oauth/authorize
-    token-uri: https://kauth.kakao.com/oauth/token
-    user-info-uri: https://kapi.kakao.com/v2/user/me
-
   google:
     client-id: ${GOOGLE_CLIENT_ID}
     client-secret: ${GOOGLE_CLIENT_SECRET}
     redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/auth/oauth2/google/callback}
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}                       # 32byte 이상
+
+signup-token:
+  secret-key: ${SIGNUP_TOKEN_SECRET}                  # jwt.secret-key 와 다른 값
+```
+
+### 3-2. 전체 설정 (커스터마이징)
+
+```yaml
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
+    # 아래 4개는 미기재 시 하드코딩 디폴트 사용 (Kakao 공식 URI)
+    authorize-uri: https://kauth.kakao.com/oauth/authorize
+    token-uri: https://kauth.kakao.com/oauth/token
+    user-info-uri: https://kapi.kakao.com/v2/user/me
+    scope: "account_email profile_nickname profile_image"
+
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+    redirect-uri: ${GOOGLE_REDIRECT_URI}
     authorize-uri: https://accounts.google.com/o/oauth2/v2/auth
     token-uri: https://oauth2.googleapis.com/token
     user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-    scope: openid email profile
+    scope: "openid email profile"
 
-  # state 파라미터 (CSRF 방어). 아래는 디폴트값이라 미기재해도 동일
-  state-redis-key-prefix: "OS:"
-  state-ttl-seconds: 300
+  # state (CSRF) + PKCE 세팅
+  state-redis-key-prefix: "OS:"                       # 디폴트 OS:
+  state-ttl-seconds: 300                              # 디폴트 5분
+
+  # OAuth HTTP client 타임아웃 (Kakao/Google 호출)
+  rest-client:
+    connect-timeout-ms: 3000                          # 디폴트 3s
+    read-timeout-ms: 5000                             # 디폴트 5s
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}                       # ⚠️ 필수 (32byte 이상, 디폴트 없음)
   access-token-expiration: 1800000                    # ms, 디폴트 30분
   refresh-token-expiration: 1209600000                # ms, 디폴트 14일
   redis-key-prefix: "RT:"                             # 디폴트 RT:
+  refresh-cookie:                                     # RefreshTokenCookieWriter 세팅
+    name: refresh_token
+    path: /
+    http-only: true
+    secure: true                                      # HTTP dev 는 false
+    same-site: None                                   # HTTP dev 는 Lax
 
 signup-token:
-  secret-key: ${SIGNUP_TOKEN_SECRET}                  # ⚠️ 필수 (JWT와 별도, 디폴트 없음)
+  secret-key: ${SIGNUP_TOKEN_SECRET}                  # ⚠️ 필수 (jwt.secret-key 와 다른 값)
   expiration: 1800000                                 # ms, 디폴트 30분
   redis-key-prefix: "ST:"                             # 디폴트 ST:
   cookie:
@@ -154,23 +196,30 @@ signup-token:
     path: /                                           # 디폴트 /
 ```
 
-### 3-1. 프로퍼티 디폴트 요약표
+### 3-3. 프로퍼티 디폴트 요약표
 
 | 프로퍼티 | 디폴트 | 필수? | 비고 |
 |---|---|---|---|
 | `jwt.secret-key` | — | ✅ 필수 | HS256 서명 키. 32byte 이상. 자동 디폴트 없음 (보안상) |
 | `jwt.access-token-expiration` | `1800000` (30분) | 선택 | ms 단위 |
 | `jwt.refresh-token-expiration` | `1209600000` (14일) | 선택 | ms 단위, access 보다 크거나 같아야 함 |
-| `jwt.redis-key-prefix` | `"RT:"` | 선택 | Redis 키 접두사. 다른 서비스와 격리 시 변경 |
+| `jwt.redis-key-prefix` | `"RT:"` | 선택 | Redis 키 접두사 |
+| `jwt.refresh-cookie.*` | name=`refresh_token`, HttpOnly=true, SameSite=None, Secure=true | 선택 | 로컬 HTTP 은 SameSite=Lax + Secure=false |
 | `signup-token.secret-key` | — | ✅ 필수 | jwt.secret-key **와 다른 값 강력 권장** |
-| `signup-token.expiration` | `1800000` (30분) | 선택 | 온보딩 이탈 방지용 짧은 TTL |
+| `signup-token.expiration` | `1800000` (30분) | 선택 | |
 | `signup-token.redis-key-prefix` | `"ST:"` | 선택 | jwt/oauth prefix 와 달라야 함 (startup 검증) |
-| `signup-token.cookie.*` | HttpOnly=true, SameSite=None, Secure=true | 선택 | 로컬 HTTP 개발환경은 SameSite=Lax + Secure=false |
+| `signup-token.cookie.*` | HttpOnly=true, SameSite=None, Secure=true | 선택 | |
 | `oauth.<provider>.client-id` | — | provider별 opt-in | 세팅된 provider 만 활성화 |
-| `oauth.<provider>.client-secret` / `redirect-uri` / `token-uri` / `user-info-uri` | — | provider 활성 시 필수 | token-uri / user-info-uri 는 https:// 강제 |
-| `oauth.<provider>.scope` | `null` (Google 은 `openid email profile` 권장) | 선택 | |
-| `oauth.state-redis-key-prefix` | `"OS:"` | 선택 | CSRF state 저장 prefix |
-| `oauth.state-ttl-seconds` | `300` (5분) | 선택 | state 유효 시간 |
+| `oauth.<provider>.client-secret` | — | provider 활성 시 필수 | |
+| `oauth.<provider>.redirect-uri` | — | provider 활성 시 필수 | |
+| `oauth.<provider>.authorize-uri` | Kakao/Google 공식 URI | 선택 | 미기재 시 하드코딩 디폴트 |
+| `oauth.<provider>.token-uri` | Kakao/Google 공식 URI | 선택 | https:// 강제 |
+| `oauth.<provider>.user-info-uri` | Kakao/Google 공식 URI | 선택 | https:// 강제 |
+| `oauth.<provider>.scope` | Kakao: `account_email profile_nickname profile_image` / Google: `openid email profile` | 선택 | |
+| `oauth.state-redis-key-prefix` | `"OS:"` | 선택 | CSRF state prefix |
+| `oauth.state-ttl-seconds` | `300` (5분) | 선택 | |
+| `oauth.rest-client.connect-timeout-ms` | `3000` | 선택 | OAuth HTTP 클라이언트 |
+| `oauth.rest-client.read-timeout-ms` | `5000` | 선택 | |
 
 **Provider 부분 opt-in** — kakao 만 쓰고 싶으면 `oauth.google.*` 통째로 생략. 활성 provider 는 `client-id` 유무로 판단.
 
@@ -184,7 +233,7 @@ openssl rand -base64 48    # signup-token.secret-key 용 (별도로 한 번 더)
 
 ---
 
-## 4. 콜백 컨트롤러 예시
+## 4. 콜백 컨트롤러 예시 (풀 플로우)
 
 ```java
 @RestController
@@ -192,19 +241,40 @@ openssl rand -base64 48    # signup-token.secret-key 용 (별도로 한 번 더)
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    // OAuth
+    private final OAuthStateService oauthStateService;
+    private final OAuthAuthorizeUrlBuilder oauthAuthorizeUrlBuilder;
     private final OAuthLoginService oauthLoginService;
+    // JWT
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenCookieWriter refreshCookieWriter;
+    // Signup token
     private final SignupTokenProvider signupTokenProvider;
     private final SignupTokenService signupTokenService;
     private final SignupTokenCookieWriter signupCookieWriter;
+
     private final UserRepository userRepository;
 
+    /** 1) 프론트가 이 엔드포인트로 redirect → 라이브러리가 state + PKCE 생성 후 Kakao/Google authorize URL 로 redirect */
+    @GetMapping("/oauth2/{provider}/authorize")
+    public void authorize(@PathVariable String provider, HttpServletResponse response) throws IOException {
+        OAuthAuthorizeParams params = oauthStateService.issue(provider);
+        String url = oauthAuthorizeUrlBuilder.build(provider, params);
+        response.sendRedirect(url);
+    }
+
+    /** 2) Kakao/Google 이 code + state 로 redirect → state 검증 → code_verifier 로 token 교환 → 회원 분기 */
     @GetMapping("/oauth2/{provider}/callback")
     public ResponseEntity<?> callback(@PathVariable String provider,
                                      @RequestParam String code,
+                                     @RequestParam String state,
                                      HttpServletResponse response) {
-        OAuthUserInfo info = oauthLoginService.fetchUserInfo(provider, code);
+        String codeVerifier = oauthStateService.validateAndConsume(state, provider);
+        if (codeVerifier == null) {
+            throw new OAuthException(OAuthErrorCode.STATE_INVALID, "Invalid or reused state");
+        }
+        OAuthUserInfo info = oauthLoginService.fetchUserInfo(provider, code, codeVerifier);
 
         return userRepository
                 .findByProviderAndProviderId(info.provider(), info.providerId())
@@ -213,13 +283,14 @@ public class AuthController {
     }
 
     private ResponseEntity<?> issueJwt(User user, HttpServletResponse response) {
-        String access = jwtProvider.generateAccessToken(user.getId().toString(), user.getRole().name());
-        String refresh = jwtProvider.generateRefreshToken(user.getId().toString());
-        refreshTokenService.save(user.getId().toString(), refresh);
+        String uid = user.getId().toString();
+        String access = jwtProvider.generateAccessToken(uid, user.getRole().name());
+        String refresh = jwtProvider.generateRefreshToken(uid);
+        refreshTokenService.save(uid, refresh);
 
         response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
-        // refresh 는 HttpOnly 쿠키 권장
-        return ResponseEntity.ok(Map.of("registered", true, "accessToken", access));
+        refreshCookieWriter.write(response, refresh);                     // HttpOnly 쿠키로
+        return ResponseEntity.ok(Map.of("registered", true));
     }
 
     private ResponseEntity<?> issueSignupToken(OAuthUserInfo info, HttpServletResponse response) {
@@ -234,27 +305,35 @@ public class AuthController {
 }
 ```
 
-**Refresh token rotation**
+### 4-1. Refresh token rotation (쿠키 기반)
+
 ```java
 @PostMapping("/refresh")
-public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
-    String oldRefresh = body.get("refreshToken");
+public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
+    String oldRefresh = refreshCookieWriter.read(request);
+    if (oldRefresh == null || !jwtProvider.validateRefresh(oldRefresh)) {
+        throw new JwtException(JwtErrorCode.TOKEN_TYPE_MISMATCH, "Invalid refresh token");
+    }
     JwtPayload p = jwtProvider.parseRefresh(oldRefresh);
 
-    // 원자적 소비: 이전 refresh 는 이 시점 이후 재사용 불가
+    // 원자적 소비 — 이전 refresh 재사용 시 감지
     if (!refreshTokenService.validateAndConsume(p.userId(), oldRefresh)) {
         throw new IllegalStateException("Refresh token expired or reused");
     }
     User user = userRepository.findById(Long.valueOf(p.userId())).orElseThrow();
 
-    String newAccess = jwtProvider.generateAccessToken(user.getId().toString(), user.getRole().name());
-    String newRefresh = jwtProvider.generateRefreshToken(user.getId().toString());
-    refreshTokenService.save(user.getId().toString(), newRefresh);
-    return ResponseEntity.ok(Map.of("accessToken", newAccess, "refreshToken", newRefresh));
+    String newAccess = jwtProvider.generateAccessToken(p.userId(), user.getRole().name());
+    String newRefresh = jwtProvider.generateRefreshToken(p.userId());
+    refreshTokenService.save(p.userId(), newRefresh);
+
+    response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccess);
+    refreshCookieWriter.write(response, newRefresh);
+    return ResponseEntity.ok().build();
 }
 ```
 
-**회원가입 완료 (signup token → JWT 전환)**
+### 4-2. 회원가입 완료 (signup token → JWT 전환)
+
 ```java
 @PostMapping("/signup")
 public ResponseEntity<?> signup(@RequestBody SignupRequest req,
@@ -262,26 +341,53 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
                                HttpServletResponse response) {
     String token = signupCookieWriter.read(request);
     if (token == null || !signupTokenProvider.validate(token)) {
-        throw new IllegalStateException("Invalid signup token");
+        throw new SignupTokenException(SignupTokenErrorCode.TOKEN_TYPE_MISMATCH, "Invalid signup token");
     }
     SignupTokenPayload payload = signupTokenProvider.parse(token);
-
     if (!signupTokenService.validateAndConsume(payload.provider(), payload.providerId(), token)) {
         throw new IllegalStateException("Signup token expired or already used");
     }
 
     User user = userRepository.save(User.of(payload.provider(), payload.providerId(), payload.email(),
             payload.extra("nickname"), req.termAgreementIds()));
+    String uid = user.getId().toString();
 
-    String access = jwtProvider.generateAccessToken(user.getId().toString(), user.getRole().name());
-    String refresh = jwtProvider.generateRefreshToken(user.getId().toString());
-    refreshTokenService.save(user.getId().toString(), refresh);
+    String access = jwtProvider.generateAccessToken(uid, user.getRole().name());
+    String refresh = jwtProvider.generateRefreshToken(uid);
+    refreshTokenService.save(uid, refresh);
 
     signupCookieWriter.clear(response);
     response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
-    return ResponseEntity.ok(Map.of("accessToken", access));
+    refreshCookieWriter.write(response, refresh);
+    return ResponseEntity.ok().build();
 }
 ```
+
+### 4-3. SecurityConfig 통합 (`JwtAuthenticationFilter` 등록)
+
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtFilter;   // 라이브러리가 자동 등록한 빈 주입
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .anyRequest().authenticated())
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+}
+```
+
+컨트롤러에서 `@AuthenticationPrincipal String userId` 로 access token 의 `sub` 클레임(userId) 자동 주입.
 
 ---
 
@@ -289,15 +395,21 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
 
 | 클래스 | 메서드 | 설명 |
 |---|---|---|
-| `OAuthLoginService` | `fetchUserInfo(provider, code)` | code → access_token → userinfo 한 번에 |
-| `OAuthTokenClient` | `exchange(provider, code)` | 저수준 token 교환 |
+| `OAuthStateService` | `issue(provider)` → `OAuthAuthorizeParams` | 🌟 state + PKCE code_challenge 발급 (Redis 저장) |
+| | `validateAndConsume(state, provider)` → codeVerifier | 🌟 원자적 GETDEL, code_verifier 반환 |
+| `OAuthAuthorizeUrlBuilder` | `build(provider, params)` | authorize URL 조립 (state/PKCE/scope 포함) |
+| `OAuthLoginService` | `fetchUserInfo(provider, code)` | 비-PKCE code → userinfo |
+| | `fetchUserInfo(provider, code, codeVerifier)` | 🌟 PKCE code → userinfo |
+| `OAuthTokenClient` | `exchange(provider, code[, codeVerifier])` | 저수준 token 교환 |
 | `OAuthUserInfoClient` | `fetch(provider, accessToken)` | 저수준 userinfo 조회 |
-| `JwtProvider` | `generateAccessToken(userId, role)` | 🌟 access 발급 (`type=ACCESS`) |
-| | `generateRefreshToken(userId)` | 🌟 refresh 발급 (`type=REFRESH`) |
+| `JwtProvider` | `generateAccessToken(userId, role)` | access 발급 (`type=ACCESS`) |
+| | `generateRefreshToken(userId)` | refresh 발급 (`type=REFRESH`) |
 | | `validateAccess/validateRefresh(token)` | type-aware 검증 |
 | | `parseAccess/parseRefresh(token)` → `JwtPayload` | type 불일치 시 예외 |
 | `RefreshTokenService` | `save/get/validate/delete` | Redis `RT:{userId}` |
 | | `validateAndConsume` (Redis 6.2+) | 🌟 원자적 rotation |
+| `RefreshTokenCookieWriter` | `write/read/clear` | 🌟 refresh HttpOnly 쿠키 관리 |
+| `JwtAuthenticationFilter` | (Spring Security 필터) | 🌟 Bearer → SecurityContext 자동 세팅 |
 | `SignupTokenProvider` | `builder(provider,id,email)` | fluent 발급, 임의 클레임 추가 |
 | | `validate(token)`, `parse(token)` | 서명/타입 검증 |
 | `SignupTokenService` | `validateAndConsume` | 회원가입 완료 시 원자적 소비 |
@@ -309,11 +421,22 @@ public ResponseEntity<?> signup(@RequestBody SignupRequest req,
 ## 6. Bean 커스터마이징
 
 모든 자동 등록 빈은 `@ConditionalOnMissingBean`. 같은 타입 빈을 직접 등록하면 자동 대체됩니다.
+
+**타임아웃만 조정하고 싶으면** 프로퍼티로 처리:
+```yaml
+oauth:
+  rest-client:
+    connect-timeout-ms: 5000
+    read-timeout-ms: 10000
+```
+
+**RestClient 자체를 커스터마이징** (인터셉터/프록시 등):
 ```java
-@Bean
-public RestClient oauthRestClient() {
-    return RestClient.builder()               // 커스텀 타임아웃/인터셉터
-            .requestFactory(myFactory)
+@Bean("oauthRestClient")
+public RestClient oauthRestClient(OAuthProperties props) {
+    return RestClient.builder()
+            .requestFactory(myCustomFactory)
+            .requestInterceptor(myInterceptor)
             .build();
 }
 ```
@@ -336,6 +459,7 @@ try {
         case TOKEN_EXCHANGE_EMPTY        -> // 응답이 비어있음
         case USERINFO_FETCH_FAILED       -> // userinfo 호출 실패
         case USERINFO_EMPTY              -> // userinfo 비어있음
+        case EMAIL_MISSING               -> // 콘솔에서 email scope/동의항목 미설정
         case STATE_INVALID               -> // CSRF state 검증 실패 (만료/재사용/불일치)
         case REDIS_PREFIX_COLLISION      -> // startup 만
     }
@@ -359,7 +483,7 @@ try {
 | `OAuthException(TOKEN_EXCHANGE_FAILED)` | redirect_uri 불일치 or code 만료(1분) or Kakao/Google 서버 5xx. 메시지의 `uri=` 값과 콘솔 등록 URI 대조 |
 | `OAuthException(TOKEN_EXCHANGE_EMPTY)` | 200 OK 지만 access_token null. Kakao/Google 앱 상태 (검수/일시 정지) 확인 |
 | `OAuthException(USERINFO_FETCH_FAILED)` | userinfo 엔드포인트 호출 실패. 네트워크/scope 확인 |
-| Kakao userinfo email 이 null | Kakao 앱 동의항목에서 이메일 필수 미설정. 라이브러리가 `kakao_{id}@kakao.user` 로 fallback |
+| `OAuthException(EMAIL_MISSING)` | 콘솔에서 email scope 미설정. Kakao: '카카오계정(이메일)' 필수 동의 / Google: `email` scope 추가 |
 | `JwtException(TOKEN_TYPE_MISMATCH)` | access token 자리에 refresh 넣었거나 반대. 정상 동작 |
 | refresh 재사용 시도 시 401 | `validateAndConsume` 로 이미 GETDEL 됨. 정상 동작 (rotation 원자성 보장) |
 | `RedisConnectionFailureException` | Redis 서버 다운/네트워크 단절. `spring.data.redis.host/port` 확인 |
@@ -367,63 +491,44 @@ try {
 
 ---
 
-## 8. CSRF 대응 (OAuth `state` — 라이브러리 제공)
+## 8. CSRF `state` + PKCE 동작 원리
 
-라이브러리가 `OAuthStateService` 를 자동 등록합니다 (Redis 필요). CSRF 공격 방어를 위해 **authorize 리다이렉트 전 발급, 콜백에서 원자적 소비** 하세요.
+라이브러리가 `OAuthStateService` + `OAuthAuthorizeUrlBuilder` 자동 등록 (Redis 필요). 위 §4 예시대로 두 엔드포인트만 만들면 됨. 내부 동작:
 
-```java
-@RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/auth")
-public class AuthController {
+**authorize 단계 (`OAuthStateService.issue`)**
+1. 24 byte cryptographically secure random 생성 → Base64URL 인코딩 → `state`
+2. 32 byte 랜덤 → `code_verifier`
+3. `code_challenge = base64url(sha256(code_verifier))`
+4. Redis `OS:<state>` 에 `{provider}|{codeVerifier}` 저장 (TTL 5분, 프로퍼티로 조절)
+5. `OAuthAuthorizeParams(state, codeChallenge, "S256")` 반환
 
-    private final OAuthStateService oauthStateService;
-    private final OAuthLoginService oauthLoginService;
-    // ...
+**callback 단계 (`OAuthStateService.validateAndConsume`)**
+1. Redis `GETDEL OS:<state>` — 원자적 조회+삭제
+2. 저장된 provider 와 요청의 provider 를 **timing-safe compare**
+3. 일치 시 `codeVerifier` 반환, 불일치/만료/재사용 시 `null`
+4. `codeVerifier` 를 `OAuthLoginService.fetchUserInfo(provider, code, codeVerifier)` 에 전달 → token 교환 시 함께 전송 → 서버가 code_challenge 와 검증
 
-    /** 프론트가 이 엔드포인트로 리다이렉트 → 라이브러리가 state 발급 → Kakao/Google authorize URL 로 재리다이렉트 */
-    @GetMapping("/oauth2/{provider}/authorize")
-    public void authorize(@PathVariable String provider, HttpServletResponse response) throws IOException {
-        String state = oauthStateService.issue(provider);   // Redis 에 자동 저장 (5분 TTL)
-        // authorize URL 은 application.yml 의 oauth.<provider>.authorize-uri 사용
-        String url = "https://kauth.kakao.com/oauth/authorize"
-                + "?client_id=..." + "&redirect_uri=..." + "&response_type=code"
-                + "&state=" + state;
-        response.sendRedirect(url);
-    }
+**방어되는 공격**
+- **CSRF** — state 없거나 재사용 시 검증 실패 → 요청 거부
+- **Code injection** — 공격자가 훔친 code 로 자기 재현하려 해도 code_verifier 를 모름
+- **Replay** — state 는 1회성 (GETDEL)
 
-    @GetMapping("/oauth2/{provider}/callback")
-    public ResponseEntity<?> callback(@PathVariable String provider,
-                                     @RequestParam String code,
-                                     @RequestParam String state) {
-        if (!oauthStateService.validateAndConsume(state, provider)) {
-            throw new OAuthException(OAuthErrorCode.STATE_INVALID,
-                    "Invalid or reused OAuth state");
-        }
-        OAuthUserInfo info = oauthLoginService.fetchUserInfo(provider, code);
-        // ... existing/new 분기
-    }
-}
-```
-
-**동작 원리**
-- `issue(provider)` — 24 byte cryptographically secure random → Base64URL 인코딩 → Redis `OS:<state>` 에 provider 값 저장 (TTL 5분)
-- `validateAndConsume(state, provider)` — Redis `GETDEL` 로 원자적 조회+삭제, provider 일치 여부 timing-safe 비교. 재사용/CSRF/만료 시 모두 false 반환
-
-state 검증을 생략하면 CSRF 공격으로 피해자 계정에 공격자의 OAuth 세션이 붙는 시나리오 발생 가능.
-
-**Refresh token 은 응답 body 대신 HttpOnly 쿠키로** 전달 권장 (XSS 방어). 위 README 예시의 body 반환은 데모용이며 프로덕션에서는 쿠키 사용.
+**Refresh token** — 위 §4-1 예시처럼 `RefreshTokenCookieWriter` 로 HttpOnly 쿠키에 저장. body/localStorage 저장은 XSS 취약.
 
 ---
 
 ## 9. 보안 특징
-- ✅ **Fail-fast**: secret 길이/필수 필드/쿠키 조합 startup 검증
+- ✅ **Fail-fast**: secret 길이/필수 필드/쿠키 조합/HTTPS/prefix 충돌 startup 검증
 - ✅ **토큰 타입 강제**: `type=ACCESS/REFRESH/SIGNUP` 클레임 검증 → 재사용 차단
-- ✅ **원자적 소비**: refresh rotation / signup 완료 모두 Redis `GETDEL` 로 race 방지
+- ✅ **CSRF `state`**: 1회성 GETDEL + provider 매칭 검증
+- ✅ **PKCE (S256)**: code injection / code interception 공격 방어
+- ✅ **원자적 소비**: refresh rotation / signup 완료 / state 검증 모두 Redis `GETDEL`
 - ✅ **Timing-safe 비교**: `MessageDigest.isEqual`
-- ✅ **HttpOnly · SameSite=None · Secure** signup 쿠키 기본
+- ✅ **HttpOnly · SameSite · Secure** 쿠키 기본 (refresh/signup)
+- ✅ **HTTPS 강제**: `token-uri` / `user-info-uri` http:// 시작 거부
 - ✅ **Secret 마스킹**: `toString()` 오버라이드
 - ✅ **Redis 미설정 명시적 WARN**: 조용한 실패 방지
+- ✅ **Kakao email 필수**: 합성 email 대신 명시적 예외
 
 ## 라이선스
 Apache License 2.0 — 자세한 내용은 [LICENSE](LICENSE) 참조.
